@@ -57,6 +57,19 @@ export default function Summary() {
     } catch (e) { setMsg({ type: 'error', text: `AI สรุปไม่สำเร็จ: ${e.message}` }) } finally { setBusy(null) }
   }
 
+  // แปลฉบับอังกฤษที่บันทึกแล้ว เป็นภาษาไทยที่คนไข้อ่านเข้าใจง่าย
+  async function translateFromEnglish() {
+    const source = toProfileShape(saved.en?.content, 'en')
+    if (!source) return
+    setBusy('tr'); setMsg(null)
+    try {
+      setContent(await aiAssist({ mode: 'translate', content: source }))
+      setAiUsed(true)
+      setEdit(true)
+      setMsg({ type: 'ok', text: 'แปลแล้ว ตรวจทานและกดบันทึกก่อนพิมพ์' })
+    } catch (e) { setMsg({ type: 'error', text: `แปลไม่สำเร็จ: ${e.message}` }) } finally { setBusy(null) }
+  }
+
   async function save() {
     setBusy('save')
     const { data: row, error } = await supabase.from('patient_summaries')
@@ -86,6 +99,12 @@ export default function Summary() {
           <button className={lang === 'th' ? 'on' : ''} onClick={() => setLang('th')}>ไทย</button>
           <button className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')}>English</button>
         </div>
+        {lang === 'th' && (
+          <button className="btn-quiet" onClick={translateFromEnglish} disabled={!!busy || !saved.en}
+            title={saved.en ? 'แปลฉบับอังกฤษที่บันทึกไว้เป็นภาษาไทยแบบเข้าใจง่าย' : 'บันทึกฉบับอังกฤษก่อน จึงจะแปลได้'}>
+            {busy === 'tr' ? 'กำลังแปล…' : 'แปลจากฉบับอังกฤษ'}
+          </button>
+        )}
         <button className="btn-quiet" onClick={generateAI} disabled={!!busy}>{busy === 'ai' ? 'AI กำลังเขียน…' : 'ให้ AI เขียนสรุปใหม่'}</button>
         <button className="btn-quiet" onClick={() => { setContent(buildSummaryFromData(data, lang)); setAiUsed(false) }} disabled={!!busy}>สร้างจากโปรไฟล์ตรง ๆ</button>
         <button className="btn-quiet" onClick={() => setEdit(!edit)}>{edit ? 'ดูตัวอย่าง' : 'แก้ไขข้อความ'}</button>
