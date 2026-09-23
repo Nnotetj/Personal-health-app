@@ -142,66 +142,111 @@ export const isAbnormal = (f) => f.flag && f.flag !== 'normal'
 
 // Build a deterministic summary (no AI) from structured data
 // รูปแบบ: { intro, themes:[{title, body:[], plan}], goals:[{label, text}], follow_up, closing }
+// อ่านกล่อง Plan ของหมอ: หัวข้อ "1. ชื่อปัญหา" / "General" ตามด้วย "- Domain: action | Target: … | เวลา"
+// (รองรับรูปแบบเก่า "[#1] Domain: …" ด้วย)
+export function parsePlanText(text) {
+  const groups = {}
+  let current = 0
+  for (const raw of String(text || '').split('\n')) {
+    const line = raw.trim()
+    if (!line) continue
+    const head = line.match(/^(\d+)[.)]\s+/)
+    if (head) { current = Number(head[1]); continue }
+    if (/^general$/i.test(line)) { current = 0; continue }
+    const legacy = line.match(/^\[(?:#\s*(\d+)|[^\]]*)\]\s*(.*)$/)
+    const n = legacy ? Number(legacy[1] || 0) : current
+    const body = (legacy ? legacy[2] : line.replace(/^[-•*]\s*/, '')).split(' | ').map((x) => x.trim())
+    const [first, ...rest] = body
+    const dm = first.match(/^([^:]{1,25}):\s*(.*)$/)
+    const others = rest.filter((x) => !/^target\s*:/i.test(x))
+    ;(groups[n] ||= []).push({
+      domain: dm ? dm[1] : '',
+      action: dm ? dm[2] : first,
+      when: others.join(', '),
+    })
+  }
+  return groups
+}
+
+const isFollowUp = (d) => /follow|ตรวจติดตาม/i.test(d || '')
+const stripPriority = (s) => String(s || '').replace(/\s*\((High|Medium|Low)\)\s*$/i, '').trim()
+
+// Build a deterministic summary (no AI) from structured data
+// รูปแบบ: { intro, themes:[{title, body:[], plan:[{action, when}]}], goals:[{label, text}], follow_up:[{what, when}], closing }
 export function buildSummaryFromData({ problems, plan, sections = [] }, lang) {
   const t = T[lang]
   const listText = sections.find((x) => x.category === 'problem_list')?.content || ''
   if (!problems.length && listText.trim()) {
     const lines = listText.split('\n').map((l) => l.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean)
-    // แผน: "[#1] Supplement: action | Target: ... | timeframe" -> จับคู่กับปัญหาข้อที่ 1
-    const planText = sections.find((x) => x.category === 'plan_text')?.content || ''
-    const byProblem = {}
-    const general = []
-    for (const raw of planText.split('\n').map((l) => l.trim()).filter(Boolean)) {
-      const m = raw.match(/^\[(?:#\s*(\d+)|[^\]]*)\]\s*(.*)$/)
-      const body = (m ? m[2] : raw).split(' | ').filter((x) => !/^target\s*:/i.test(x.trim()))
-      const [first, ...rest] = body
-      const action = [first.replace(/^[^:]{1,25}:\s*/, ''), ...rest].join(' — ')
-      if (m && m[1]) (byProblem[m[1]] ||= []).push(action)
-      else general.push(action)
-    }
+    const groups = parsePlanText(sections.find((x) => x.category === 'plan_text')?.content)
+    const follow = []
+    const themes = lines.slice(0, 6).map((l, i) => {
+      const [title, ...rest] = l.split(' — ')
+      const items = groups[i + 1] || []
+      follow.push(...items.filter((x) => isFollowUp(x.domain)))
+      return { title: stripPriority(title), body: [rest.join(' — ')], plan: items.filter((x) => !isFollowUp(x.domain)).map(({ action, when }) => ({ action, when })) }
+    })
+    follow.push(...(groups[0] || []))
     return {
       intro: '',
-      themes: lines.slice(0, 6).map((l, i) => {
-        const [title, ...rest] = l.split(' — ')
-        return { title, body: [rest.join(' — ')], plan: (byProblem[String(i + 1)] || []).join('; ') }
-      }),
-      goals: lines.slice(0, 3).map((l, i) => ({ label: t.goalLabels[i], text: l.split(' — ')[0] })),
-      follow_up: general.join('; '), closing: '',
+      themes,
+      goals: lines.slice(0, 3).map((l, i) => ({ label: t.goalLabels[i], text: stripPriority(l.split(' — ')[0]) })),
+      follow_up: follow.map((x) => ({ what: x.action, when: x.when })),
+      closing: '',
     }
   }
   const top = [...problems].sort(prioritySort)
-  const actionsFor = (id) => plan.filter((p) => p.problem_id === id && p.domain !== 'follow_up_test').map((p) => p.action)
+  const item = (p) => ({ action: p.action, when: p.timeframe || '' })
   return {
     intro: top.length
       ? (lang === 'th'
         ? `ผลตรวจครั้งนี้มี ${top.length} เรื่องหลักที่ควรดูแล โดยเริ่มจาก “${top[0].title}”`
         : `Your health check shows ${top.length} main areas to work on, starting with “${top[0].title}”.`)
       : '',
-    themes: top.slice(0, 6).map((p) => ({ title: p.title, body: [p.detail || ''], plan: actionsFor(p.id).join(', ') })),
+    themes: top.slice(0, 6).map((p) => ({
+      title: p.title, body: [p.detail || ''],
+      plan: plan.filter((x) => x.problem_id === p.id && x.domain !== 'follow_up_test').map(item),
+    })),
     goals: top.slice(0, 3).map((p, i) => ({ label: t.goalLabels[i], text: p.title })),
-    follow_up: plan.filter((p) => p.domain === 'follow_up_test' || p.domain === 'referral').map((p) => p.action).join(', '),
+    follow_up: plan.filter((x) => x.domain === 'follow_up_test' || !x.problem_id)
+      .map((x) => ({ what: x.action, when: x.timeframe || '' })),
     closing: '',
+  }
+}
+
+// ทำให้สรุปทุกรูปแบบ (เก่า/ใหม่) แสดงได้: plan และ follow_up เป็นรายการเสมอ
+function normalizeSummary(c) {
+  const toPlan = (p) => (Array.isArray(p) ? p : p ? [{ action: p, when: '' }] : [])
+  const toFollow = (f) => (Array.isArray(f) ? f : f ? [{ what: f, when: '' }] : [])
+  return {
+    ...c,
+    themes: (c.themes || []).map((x) => ({ ...x, body: x.body || [], plan: toPlan(x.plan) })),
+    goals: c.goals || [],
+    follow_up: toFollow(c.follow_up),
   }
 }
 
 // แปลงสรุปรูปแบบเก่า (headline / priorities / plan / next_steps) ที่บันทึกไว้แล้วให้แสดงได้
 export function toProfileShape(c, lang) {
-  if (!c || c.themes) return c
+  if (!c) return c
+  if (c.themes) return normalizeSummary(c)
   const t = T[lang]
-  return {
+  return normalizeSummary({
     intro: c.headline || '',
-    themes: (c.priorities || []).map((p) => ({ title: p.title, body: [p.why || ''], plan: '' })),
+    themes: (c.priorities || []).map((p) => ({ title: p.title, body: [p.why || ''], plan: [] })),
     goals: (c.priorities || []).slice(0, 3).map((p, i) => ({ label: t.goalLabels[i], text: p.title })),
-    follow_up: (c.next_steps || []).map((n) => [n.what, n.when].filter(Boolean).join(' ')).join(', '),
+    follow_up: (c.next_steps || []).map((n) => ({ what: n.what, when: n.when || '' })),
     closing: '',
-  }
+  })
 }
 
 // นับคำ (รองรับภาษาไทยที่ไม่มีช่องว่าง)
 export function countWords(c) {
   if (!c) return 0
-  const text = [c.intro, ...(c.themes || []).flatMap((x) => [x.title, ...(x.body || []), x.plan]),
-    ...(c.goals || []).map((g) => g.text), c.follow_up, c.closing].filter(Boolean).join(' ')
+  const planText = (p) => (Array.isArray(p) ? p.flatMap((x) => [x.action, x.when]) : [p])
+  const followText = (f) => (Array.isArray(f) ? f.flatMap((x) => [x.what, x.when]) : [f])
+  const text = [c.intro, ...(c.themes || []).flatMap((x) => [x.title, ...(x.body || []), ...planText(x.plan)]),
+    ...(c.goals || []).map((g) => g.text), ...followText(c.follow_up), c.closing].filter(Boolean).join(' ')
   if (typeof Intl !== 'undefined' && Intl.Segmenter) {
     let n = 0
     for (const s of new Intl.Segmenter(undefined, { granularity: 'word' }).segment(text)) if (s.isWordLike) n++
