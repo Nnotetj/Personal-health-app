@@ -48,7 +48,7 @@ export const CATEGORIES = [
 // ช่องสรุปรวมท้ายโปรไฟล์ (เก็บใน visit_sections แต่ไม่ใช่หมวดของค่าตัวเลข)
 export const INTEGRATED = { key: 'integrated', name: 'Integrated Profile', hint: 'ภาพรวมและลำดับความสำคัญ 2–4 ประโยค' }
 export const PROBLEM_LIST = { key: 'problem_list', name: 'ปัญหาเรียงตามความสำคัญ', hint: '1 บรรทัดต่อ 1 ปัญหา เรียงจากสำคัญที่สุด' }
-export const PLAN_TEXT = { key: 'plan_text', name: 'Plan of management', hint: '1 บรรทัดต่อ 1 แผน' }
+export const PLAN_TEXT = { key: 'plan_text', name: 'Plan of management', hint: 'จัดกลุ่มตามปัญหาด้านบน' }
 
 // แปลงปัญหา/แผนแบบตารางเดิม (ข้อมูลเก่า) เป็นข้อความ
 export function problemsToText(problems) {
@@ -56,11 +56,15 @@ export function problemsToText(problems) {
     `${i + 1}. ${p.title}${PRIORITIES[p.priority] ? ` (${PRIORITIES[p.priority].label})` : ''}${p.detail ? ` — ${p.detail}` : ''}`).join('\n')
 }
 export function planToText(plan, problems) {
-  const order = [...problems].sort(prioritySort).map((p) => p.id)
-  return plan.map((x) => {
-    const n = order.indexOf(x.problem_id)
-    return `${n >= 0 ? `[#${n + 1}] ` : ''}${DOMAINS[x.domain]?.label || 'Other'}: ${x.action}${x.target ? ` | Target: ${x.target}` : ''}${x.timeframe ? ` | ${x.timeframe}` : ''}`
-  }).join('\n')
+  const order = [...problems].sort(prioritySort)
+  const line = (x) => `- ${DOMAINS[x.domain]?.label || 'Other'}: ${x.action}${x.target ? ` | Target: ${x.target}` : ''}${x.timeframe ? ` | ${x.timeframe}` : ''}`
+  const blocks = order.map((p, i) => {
+    const items = plan.filter((x) => x.problem_id === p.id)
+    return items.length ? [`${i + 1}. ${p.title}`, ...items.map(line)].join('\n') : null
+  }).filter(Boolean)
+  const general = plan.filter((x) => !order.some((p) => p.id === x.problem_id))
+  if (general.length) blocks.push(['General', ...general.map(line)].join('\n'))
+  return blocks.join('\n\n')
 }
 
 export const CAT = Object.fromEntries(CATEGORIES.map((c) => [c.key, c]))
@@ -143,11 +147,26 @@ export function buildSummaryFromData({ problems, plan, sections = [] }, lang) {
   const listText = sections.find((x) => x.category === 'problem_list')?.content || ''
   if (!problems.length && listText.trim()) {
     const lines = listText.split('\n').map((l) => l.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean)
+    // แผน: "[#1] Supplement: action | Target: ... | timeframe" -> จับคู่กับปัญหาข้อที่ 1
+    const planText = sections.find((x) => x.category === 'plan_text')?.content || ''
+    const byProblem = {}
+    const general = []
+    for (const raw of planText.split('\n').map((l) => l.trim()).filter(Boolean)) {
+      const m = raw.match(/^\[(?:#\s*(\d+)|[^\]]*)\]\s*(.*)$/)
+      const body = (m ? m[2] : raw).split(' | ').filter((x) => !/^target\s*:/i.test(x.trim()))
+      const [first, ...rest] = body
+      const action = [first.replace(/^[^:]{1,25}:\s*/, ''), ...rest].join(' — ')
+      if (m && m[1]) (byProblem[m[1]] ||= []).push(action)
+      else general.push(action)
+    }
     return {
       intro: '',
-      themes: lines.slice(0, 6).map((l) => { const [title, ...rest] = l.split(' — '); return { title, body: [rest.join(' — ')], plan: '' } }),
+      themes: lines.slice(0, 6).map((l, i) => {
+        const [title, ...rest] = l.split(' — ')
+        return { title, body: [rest.join(' — ')], plan: (byProblem[String(i + 1)] || []).join('; ') }
+      }),
       goals: lines.slice(0, 3).map((l, i) => ({ label: t.goalLabels[i], text: l.split(' — ')[0] })),
-      follow_up: '', closing: '',
+      follow_up: general.join('; '), closing: '',
     }
   }
   const top = [...problems].sort(prioritySort)
