@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase, aiAssist } from '../lib/supabase'
-import { CATEGORIES, CAT, DOMAINS, FLAGS, PRIORITIES, ageFrom, uid } from '../lib/constants'
+import { CATEGORIES, DOMAINS, FLAGS, PRIORITIES, ageFrom, uid } from '../lib/constants'
 import { loadCatalog, normalizeFinding, computeFlag, unitMismatch } from '../lib/catalog'
 
-const emptyFinding = (category) => ({ _k: uid(), _manual: true, category, subcategory: '', test_code: '', test_name: '', value_text: '', value_num: '', unit: '', ref_range: '', flag: 'normal', interpretation: '' })
+const emptyValue = (category = 'conventional') =>
+  ({ _k: uid(), _manual: true, category, test_code: '', test_name: '', value_num: '', unit: '', ref_range: '', flag: 'normal' })
 const emptyProblem = () => ({ id: uid(), title: '', detail: '', priority: 'medium', category: '', status: 'active' })
 const emptyPlan = () => ({ _k: uid(), problem_id: '', domain: 'nutrition', action: '', target: '', timeframe: '' })
+const emptySections = () => Object.fromEntries(CATEGORIES.map((c) => [c.key, '']))
 
 const PLACEHOLDER = `ตัวอย่าง:
 CBC: Hb 11.8 (low), MCV 76
@@ -27,11 +29,12 @@ export default function VisitEditor() {
   const nav = useNavigate()
   const [patient, setPatient] = useState(null)
   const [visit, setVisit] = useState({ visit_date: new Date().toISOString().slice(0, 10), package_name: 'Full wellness package', raw_note: '', doctor_note: '', status: 'draft' })
-  const [findings, setFindings] = useState([])
+  const [sections, setSections] = useState(emptySections())
+  const [values, setValues] = useState([])
   const [problems, setProblems] = useState([])
   const [plan, setPlan] = useState([])
   const [aiDraft, setAiDraft] = useState(null)
-  const [tab, setTab] = useState('conventional')
+  const [showValues, setShowValues] = useState(false)
   const [busy, setBusy] = useState(null)
   const [err, setErr] = useState(null)
   const [dirty, setDirty] = useState(false)
@@ -43,8 +46,9 @@ export default function VisitEditor() {
     (async () => {
       let pid = patientIdParam
       if (visitId) {
-        const [{ data: v }, { data: f }, { data: pr }, { data: pl }] = await Promise.all([
+        const [{ data: v }, { data: sec }, { data: f }, { data: pr }, { data: pl }] = await Promise.all([
           supabase.from('visits').select('*').eq('id', visitId).single(),
+          supabase.from('visit_sections').select('*').eq('visit_id', visitId),
           supabase.from('findings').select('*').eq('visit_id', visitId).order('sort_order'),
           supabase.from('problems').select('*').eq('visit_id', visitId).order('sort_order'),
           supabase.from('plan_items').select('*').eq('visit_id', visitId).order('sort_order'),
@@ -52,9 +56,11 @@ export default function VisitEditor() {
         if (!v) { setErr('ไม่พบผลตรวจนี้'); return }
         pid = v.patient_id
         setVisit(v); setAiDraft(v.ai_draft)
-        setFindings((f || []).map((x) => ({ ...x, _k: x.id, value_num: x.value_num ?? '', test_code: x.test_code || '' })))
+        setSections({ ...emptySections(), ...Object.fromEntries((sec || []).map((s) => [s.category, s.content])) })
+        setValues((f || []).map((x) => ({ ...x, _k: x.id, _manual: false, value_num: x.value_num ?? '', test_code: x.test_code || '' })))
         setProblems((pr || []).map((x) => ({ ...x, category: x.category || '' })))
         setPlan((pl || []).map((x) => ({ ...x, _k: x.id, problem_id: x.problem_id || '' })))
+        if ((f || []).length) setShowValues(true)
       }
       const { data: p } = await supabase.from('patients').select('*').eq('id', pid).single()
       setPatient(p)
@@ -67,26 +73,25 @@ export default function VisitEditor() {
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
 
+  const sex = patient?.sex
   const touch = (fn) => (...a) => { setDirty(true); fn(...a) }
   const setV = touch((k, val) => setVisit((v) => ({ ...v, [k]: val })))
-  const updFinding = touch((k, field, val) => setFindings((rows) => rows.map((r) => (r._k === k ? { ...r, [field]: val } : r))))
+  const setSection = touch((key, text) => setSections((s) => ({ ...s, [key]: text })))
+  const updValue = touch((k, field, val) => setValues((rows) => rows.map((r) => (r._k === k ? { ...r, [field]: val } : r))))
   const updProblem = touch((id, field, val) => setProblems((rows) => rows.map((r) => (r.id === id ? { ...r, [field]: val } : r))))
   const updPlan = touch((k, field, val) => setPlan((rows) => rows.map((r) => (r._k === k ? { ...r, [field]: val } : r))))
-  const sex = patient?.sex
-  // on blur of name/value: map to catalog, and for manually typed rows auto-set flag
-  const normalizeRow = (k) => setFindings((rows) => rows.map((r) => {
-    if (r._k !== k) return r
-    // keep the tab the doctor is typing in; AI-imported rows take the catalog category
-    const n = { ...normalizeFinding(catalog, { ...r, test_code: '' }, sex), category: r.category }
-    const entry = catalog?.byCode.get(n.test_code)
-    const suggested = computeFlag(entry, n.value_num, sex, n.unit)
-    return r._manual && suggested ? { ...n, flag: suggested } : n
-  }))
   const moveProblem = touch((i, d) => setProblems((rows) => {
     const j = i + d
     if (j < 0 || j >= rows.length) return rows
     const c = [...rows];[c[i], c[j]] = [c[j], c[i]]
     return c
+  }))
+  const normalizeRow = (k) => setValues((rows) => rows.map((r) => {
+    if (r._k !== k) return r
+    const n = normalizeFinding(catalog, { ...r, test_code: '' }, sex)
+    const entry = catalog?.byCode.get(n.test_code)
+    const suggested = computeFlag(entry, n.value_num, sex, n.unit)
+    return r._manual && suggested ? { ...n, flag: suggested } : n
   }))
 
   async function runAI() {
@@ -94,18 +99,18 @@ export default function VisitEditor() {
     setErr(null); setBusy('ai')
     try {
       const ctx = patient ? [patient.sex && `sex ${patient.sex}`, patient.dob && `age ${ageFrom(patient.dob, visit.visit_date)}`, patient.background && `background: ${patient.background}`].filter(Boolean).join(', ') : ''
-      const out = await aiAssist({ mode: 'extract', raw_note: visit.raw_note, patient_context: ctx, catalog_names: (catalog?.rows || []).map((r) => r.name) })
+      const out = await aiAssist({
+        mode: 'extract', raw_note: visit.raw_note, patient_context: ctx,
+        catalog_names: (catalog?.rows || []).map((r) => r.name),
+      })
       const newProblems = (out.problems || []).map((p) => ({ ...emptyProblem(), ...p, category: p.category || '' }))
-      const newFindings = (out.findings || []).map((f) => normalizeFinding(catalog, { ...emptyFinding(f.category), ...f, _manual: false, value_num: f.value_num ?? '', _k: uid() }, patient?.sex))
       const newPlan = (out.plan || []).map((p) => ({ ...emptyPlan(), ...p, problem_id: newProblems[p.problem_index]?.id || '', _k: uid() }))
-      const hasData = findings.length || problems.length || plan.length
-      const replace = !hasData || window.confirm('ฟอร์มมีข้อมูลอยู่แล้ว\nตกลง = แทนที่ด้วยร่างจาก AI\nยกเลิก = เพิ่มต่อท้ายข้อมูลเดิม')
-      setFindings((r) => (replace ? newFindings : [...r, ...newFindings]))
-      setProblems((r) => (replace ? newProblems : [...r, ...newProblems]))
-      setPlan((r) => (replace ? newPlan : [...r, ...newPlan]))
+      const newValues = (out.key_values || []).map((v) =>
+        normalizeFinding(catalog, { ...emptyValue(v.category), ...v, _manual: false, value_num: v.value_num ?? '', _k: uid() }, sex))
+      setSections({ ...emptySections(), ...(out.sections || {}) })
+      setProblems(newProblems); setPlan(newPlan); setValues(newValues)
       setAiDraft(out); setDirty(true)
-      const firstCat = CATEGORIES.find((c) => newFindings.some((f) => f.category === c.key))
-      if (firstCat) setTab(firstCat.key)
+      if (newValues.length) setShowValues(true)
     } catch (e) {
       setErr(`AI ร่างไม่สำเร็จ: ${e.message}`)
     } finally { setBusy(null) }
@@ -114,12 +119,13 @@ export default function VisitEditor() {
   async function save(status) {
     setErr(null); setBusy('save')
     const clean = (s) => (s === '' ? null : s)
-    const { data, error } = await supabase.rpc('save_visit', {
+    const { error } = await supabase.rpc('save_visit', {
       p_visit: { id: visitId || null, patient_id: patient.id, visit_date: visit.visit_date, package_name: visit.package_name,
         raw_note: visit.raw_note, doctor_note: visit.doctor_note, status, ai_draft: aiDraft },
-      p_findings: findings.map((f, i) => ({ category: f.category, subcategory: clean(f.subcategory), test_code: clean(f.test_code), test_name: f.test_name,
-        value_text: clean(f.value_text), value_num: f.value_num === '' || isNaN(Number(f.value_num)) ? null : Number(f.value_num),
-        unit: clean(f.unit), ref_range: clean(f.ref_range), flag: f.flag, interpretation: clean(f.interpretation), sort_order: i })),
+      p_sections: CATEGORIES.map((c) => ({ category: c.key, content: sections[c.key] || '' })),
+      p_findings: values.map((f, i) => ({ category: f.category, subcategory: clean(f.subcategory), test_code: clean(f.test_code),
+        test_name: f.test_name, value_num: f.value_num === '' || isNaN(Number(f.value_num)) ? null : Number(f.value_num),
+        unit: clean(f.unit), ref_range: clean(f.ref_range), flag: f.flag, sort_order: i })),
       p_problems: problems.map((p, i) => ({ id: p.id, title: p.title, detail: clean(p.detail), priority: p.priority,
         category: clean(p.category), status: p.status, sort_order: i })),
       p_plan: plan.map((p, i) => ({ problem_id: clean(p.problem_id), domain: p.domain, action: p.action,
@@ -132,9 +138,6 @@ export default function VisitEditor() {
   }
 
   if (!patient) return <div className="page muted">{err || 'กำลังโหลด…'}</div>
-
-  const tabRows = findings.filter((f) => f.category === tab)
-  const cat = CAT[tab]
 
   return (
     <div className="page editor">
@@ -149,7 +152,7 @@ export default function VisitEditor() {
       {err && <p className="alert error">{err}</p>}
 
       <div className="editor-grid">
-        {/* Step 1: free text */}
+        {/* Step 1 */}
         <section className="panel note-panel">
           <h2><span className="step">1</span>สรุป pertinent findings</h2>
           <div className="form-grid">
@@ -164,47 +167,71 @@ export default function VisitEditor() {
           </label>
         </section>
 
-        {/* Step 2: structured */}
+        {/* Step 2 */}
         <section className="panel">
           <h2><span className="step">2</span>ตรวจทานและแก้ไข</h2>
+          <p className="muted small">AI เรียบเรียงเป็นข้อความ 4 หมวด แก้ไขได้เหมือนแก้เอกสาร</p>
 
-          <div className="cat-tabs" role="tablist">
-            {CATEGORIES.map((c) => {
-              const n = findings.filter((f) => f.category === c.key).length
-              return (
-                <button key={c.key} role="tab" aria-selected={tab === c.key} className={`cat-tab cat-${c.key} ${tab === c.key ? 'on' : ''}`} onClick={() => setTab(c.key)}>
-                  {c.name}<span className="n">{n}</span>
-                </button>
-              )
-            })}
-          </div>
+          {CATEGORIES.map((c) => (
+            <section key={c.key} className={`sec-edit cat-${c.key}`}>
+              <header>
+                <h3>{c.name}</h3>
+                <span className="muted small">{c.hint}</span>
+              </header>
+              <textarea
+                className="sec-text"
+                rows={Math.min(Math.max((sections[c.key] || '').split('\n').length + 1, 3), 16)}
+                placeholder={`ยังไม่มีข้อมูลใน ${c.name}`}
+                value={sections[c.key] || ''}
+                onChange={(e) => setSection(c.key, e.target.value)}
+              />
+            </section>
+          ))}
 
-          <div className={`cat-body cat-${tab}`}>
-            {tabRows.length === 0 && <p className="muted small">ยังไม่มีรายการใน {cat.name}</p>}
-            {tabRows.map((f) => (
-              <div key={f._k} className="f-row">
-                <select value={f.subcategory || ''} onChange={(e) => updFinding(f._k, 'subcategory', e.target.value)} aria-label="หมวดย่อย">
-                  <option value="">หมวดย่อย</option>
-                  {cat.subs.map((s) => <option key={s}>{s}</option>)}
-                  {f.subcategory && !cat.subs.includes(f.subcategory) && <option>{f.subcategory}</option>}
-                </select>
-                <input className="w-name" placeholder="ชื่อการตรวจ" list={`cat-${tab}`} value={f.test_name} onChange={(e) => { updFinding(f._k, 'test_name', e.target.value); updFinding(f._k, 'test_code', '') }} onBlur={() => normalizeRow(f._k)} />
-                <input className="w-val" placeholder="ค่าตัวเลข" inputMode="decimal" value={f.value_num} onChange={(e) => updFinding(f._k, 'value_num', e.target.value)} onBlur={() => normalizeRow(f._k)} />
-                <input className="w-unit" placeholder="หน่วย" value={f.unit || ''} onChange={(e) => updFinding(f._k, 'unit', e.target.value)} />
-                <input className="w-txt" placeholder="ผล (ข้อความ)" value={f.value_text || ''} onChange={(e) => updFinding(f._k, 'value_text', e.target.value)} />
-                <input className="w-ref" placeholder="ค่าอ้างอิง" value={f.ref_range || ''} onChange={(e) => updFinding(f._k, 'ref_range', e.target.value)} />
-                <select className={`w-flag flag-${f.flag}`} value={f.flag} onChange={(e) => { updFinding(f._k, 'flag', e.target.value); updFinding(f._k, '_manual', false) }} aria-label="สถานะ">
-                  {Object.entries(FLAGS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-                </select>
-                <input className="w-interp" placeholder="การแปลผล" value={f.interpretation || ''} onChange={(e) => updFinding(f._k, 'interpretation', e.target.value)} />
-                <button className="btn-quiet danger" onClick={touch(() => setFindings((r) => r.filter((x) => x._k !== f._k)))} aria-label="ลบรายการ">ลบ</button>
-                <CatalogHint f={f} catalog={catalog} sex={sex} onApply={(flag) => { updFinding(f._k, 'flag', flag); updFinding(f._k, '_manual', false) }} />
-              </div>
-            ))}
-            <datalist id={`cat-${tab}`}>
-              {(catalog?.rows || []).filter((r) => r.category === tab).map((r) => <option key={r.code} value={r.name}>{r.subcategory}</option>)}
-            </datalist>
-            <button className="btn-add" onClick={touch(() => setFindings((r) => [...r, emptyFinding(tab)]))}>เพิ่มรายการใน {cat.name}</button>
+          {/* key numeric values for trends */}
+          <div className="values-block">
+            <button className="btn-quiet toggle" onClick={() => setShowValues(!showValues)}>
+              {showValues ? 'ซ่อน' : 'แสดง'}ค่าตัวเลขสำหรับกราฟแนวโน้ม ({values.length})
+            </button>
+            {showValues && (
+              <>
+                <p className="muted small">AI ดึงค่าสำคัญมาให้แล้ว ค่าเหล่านี้ใช้ทำกราฟเทียบกับครั้งก่อน ลบหรือเพิ่มได้ตามต้องการ</p>
+                {values.map((f) => {
+                  const entry = f.test_code ? catalog?.byCode.get(f.test_code) : null
+                  const suggested = entry ? computeFlag(entry, f.value_num, sex, f.unit) : null
+                  return (
+                    <div key={f._k} className={`v-row cat-${f.category}`}>
+                      <select value={f.category} onChange={(e) => updValue(f._k, 'category', e.target.value)} aria-label="หมวด">
+                        {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.name}</option>)}
+                      </select>
+                      <input className="w-name" placeholder="ชื่อการตรวจ" list="all-tests" value={f.test_name}
+                        onChange={(e) => { updValue(f._k, 'test_name', e.target.value); updValue(f._k, 'test_code', '') }}
+                        onBlur={() => normalizeRow(f._k)} />
+                      <input className="w-val" placeholder="ค่า" inputMode="decimal" value={f.value_num}
+                        onChange={(e) => updValue(f._k, 'value_num', e.target.value)} onBlur={() => normalizeRow(f._k)} />
+                      <input className="w-unit" placeholder="หน่วย" value={f.unit || ''} onChange={(e) => updValue(f._k, 'unit', e.target.value)} />
+                      <input className="w-ref" placeholder="ค่าอ้างอิง" value={f.ref_range || ''} onChange={(e) => updValue(f._k, 'ref_range', e.target.value)} />
+                      <select className={`w-flag flag-${f.flag}`} value={f.flag}
+                        onChange={(e) => { updValue(f._k, 'flag', e.target.value); updValue(f._k, '_manual', false) }} aria-label="สถานะ">
+                        {Object.entries(FLAGS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                      </select>
+                      <button className="btn-quiet danger" onClick={touch(() => setValues((r) => r.filter((x) => x._k !== f._k)))}>ลบ</button>
+                      {entry && unitMismatch(entry, f.unit)
+                        ? <p className="f-hint warn">หน่วยต่างจากมาตรฐาน ({entry.unit}) ระบบจึงไม่เช็ก flag ให้</p>
+                        : suggested && suggested !== f.flag
+                          ? <p className="f-hint warn">ตามค่าอ้างอิงควรเป็น <strong>{FLAGS[suggested]}</strong>
+                            <button type="button" className="link-btn" onClick={() => { updValue(f._k, 'flag', suggested); updValue(f._k, '_manual', false) }}>ใช้ค่านี้</button>
+                          </p>
+                          : null}
+                    </div>
+                  )
+                })}
+                <datalist id="all-tests">
+                  {(catalog?.rows || []).map((r) => <option key={r.code} value={r.name}>{r.subcategory}</option>)}
+                </datalist>
+                <button className="btn-add" onClick={touch(() => setValues((r) => [...r, emptyValue()]))}>เพิ่มค่าตัวเลข</button>
+              </>
+            )}
           </div>
 
           <h3 className="sub">ปัญหาเรียงตามความสำคัญ</h3>
@@ -257,21 +284,4 @@ export default function VisitEditor() {
       </div>
     </div>
   )
-}
-
-function CatalogHint({ f, catalog, sex, onApply }) {
-  if (!catalog || !f.test_name) return null
-  const entry = f.test_code ? catalog.byCode.get(f.test_code) : null
-  if (!entry) return <p className="f-hint muted">ไม่อยู่ใน test catalog แนวโน้มจะจับคู่จากชื่อนี้ตรง ๆ</p>
-  if (unitMismatch(entry, f.unit)) return <p className="f-hint warn">หน่วยต่างจากมาตรฐาน ({entry.unit}) ระบบจึงไม่เช็ก flag ให้</p>
-  const suggested = computeFlag(entry, f.value_num, sex, f.unit)
-  if (suggested && suggested !== f.flag) {
-    return (
-      <p className="f-hint warn">
-        ตามค่าอ้างอิงใน catalog ควรเป็น <strong>{FLAGS[suggested]}</strong>
-        <button type="button" className="link-btn" onClick={() => onApply(suggested)}>ใช้ค่านี้</button>
-      </p>
-    )
-  }
-  return null
 }
