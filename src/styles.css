@@ -358,3 +358,24 @@ fieldset.ranges legend { font-size: .85rem; color: var(--ink-2); padding: 0 .3re
 fieldset.ranges p { grid-column: 1 / -1; margin: 0; }
 .catalog-table td.num { white-space: normal; }
 .catalog-table .cat-dot::before { flex: none; }
+
+/* ---------- narrative sections ---------- */
+.sec-edit { border-left: 4px solid var(--cat); padding-left: .75rem; margin: 1rem 0; }
+.sec-edit header { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; margin-bottom: .35rem; }
+.sec-edit h3 { color: var(--cat); }
+textarea.sec-text { font-size: .92rem; line-height: 1.6; }
+.values-block { margin: 1.25rem 0; padding-top: .75rem; border-top: 1px solid var(--line-2); }
+.values-block .toggle { width: 100%; }
+.v-row { display: grid; gap: .4rem; padding: .5rem 0 .5rem .6rem; border-left: 3px solid var(--cat);
+  border-bottom: 1px solid var(--line-2); align-items: start;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) minmax(0, .7fr) minmax(0, .7fr) minmax(0, .9fr) minmax(0, 1fr) auto; }
+.v-row input, .v-row select { min-width: 0; }
+.v-row .f-hint { grid-column: 1 / -1; }
+.sec-body { padding: .6rem 1rem .2rem; font-size: .92rem; }
+.sec-body p { margin: 0 0 .25rem; }
+.sec-body p.sec-sum { margin-top: .5rem; padding-top: .4rem; border-top: 1px dashed var(--line); color: var(--cat); font-weight: 500; }
+@media (max-width: 1080px) {
+  .v-row { grid-template-columns: 1fr 1fr 1fr; }
+  .v-row .w-name { grid-column: span 2; }
+  .v-row > button { grid-column: span 3; justify-self: end; }
+}
