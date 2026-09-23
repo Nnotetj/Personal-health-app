@@ -28,7 +28,12 @@ export default function App() {
   }, [session])
 
   if (session === undefined) return <div className="boot">กำลังโหลด…</div>
-  if (!session) return <Login />
+  if (!session) {
+    // ยังไม่ได้เข้าสู่ระบบ: /login = ฟอร์มเข้าสู่ระบบ, หน้าอื่น = หน้าแนะนำ (public/welcome.html)
+    if (window.location.pathname === '/login') return <Login />
+    window.location.replace('/welcome.html')
+    return <div className="boot">กำลังโหลด…</div>
+  }
   if (!profile) return <div className="boot">กำลังโหลดโปรไฟล์…</div>
   if (!profile.is_active) return <Pending email={profile.email} />
 

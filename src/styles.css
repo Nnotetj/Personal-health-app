@@ -131,6 +131,7 @@ label.switch input { width: auto; min-height: 0; }
 .auth-card { width: 100%; max-width: 400px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 2rem; display: flex; flex-direction: column; gap: .9rem; }
 .auth-card h1 { margin-top: .5rem; }
 .auth-card .muted { margin: -.5rem 0 .5rem; }
+.auth-back { text-align: center; font-size: .9rem; color: var(--ink-2); }
 
 /* ---------- patient list ---------- */
 .toolbar { display: flex; gap: .75rem; margin-bottom: 1rem; flex-wrap: wrap; }
