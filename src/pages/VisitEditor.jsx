@@ -1,28 +1,30 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase, aiAssist } from '../lib/supabase'
-import { CATEGORIES, DOMAINS, FLAGS, PRIORITIES, ageFrom, uid } from '../lib/constants'
+import { CATEGORIES, INTEGRATED, DOMAINS, FLAGS, PRIORITIES, ageFrom, uid } from '../lib/constants'
 import { loadCatalog, normalizeFinding, computeFlag, unitMismatch } from '../lib/catalog'
 
-const emptyValue = (category = 'conventional') =>
+const emptyValue = (category = 'biomarker') =>
   ({ _k: uid(), _manual: true, category, test_code: '', test_name: '', value_num: '', unit: '', ref_range: '', flag: 'normal' })
 const emptyProblem = () => ({ id: uid(), title: '', detail: '', priority: 'medium', category: '', status: 'active' })
 const emptyPlan = () => ({ _k: uid(), problem_id: '', domain: 'nutrition', action: '', target: '', timeframe: '' })
-const emptySections = () => Object.fromEntries(CATEGORIES.map((c) => [c.key, '']))
+const SECTION_KEYS = [...CATEGORIES.map((c) => c.key), INTEGRATED.key]
+const emptySections = () => Object.fromEntries(SECTION_KEYS.map((k) => [k, '']))
 
 const PLACEHOLDER = `ตัวอย่าง:
-CBC: Hb 11.8 (low), MCV 76
-FBG 108, HbA1c 5.9, fasting insulin 14 (HOMA-IR 3.8)
-LDL 172, TG 190, HDL 38, ApoB 125
-Vit D 18, ferritin 22, B12 310
-TSH 3.9, free T4 normal
-APOE e3/e4, MTHFR C677T heterozygous
-Epigenetic age 46 (chronological 41)
-Gut microbiome: low diversity, low Akkermansia
-InBody: BF 31%, SMM 24 kg, visceral fat level 11
-VO2 max 29 ml/kg/min (poor for age)
-US upper abdomen: fatty liver grade 1
-CAC score 0`
+U/D = DLP, GERD | allergy: deny
+current med = Rosuvastatin 10 mg, Nexium
+smk 20 cigs/d, alc 2+ | FHx: dad = prostate CA
+CONCERN: heart, bloating, low energy
+BODY: BMI 26, visc fat 2+, BF 32%, lo LMI
+Fit age 50.6 | lo grip, nl VO2 max
+CVD: LDL 119, HDL 48, sdLDL 23 | CIMT 0.9, plaque, CAC 0, echo nl
+Vit D 30, CRP 1.6, TMAO high
+Thyroid: hi FT4, TSH 3, nodule 0.6 cm TR4
+GI: fatty liver
+Epigenetic: CA 49.8, bio age 43.3, pace 0.8
+Genetic: hi risk pancreatic CA, carrier CFTR
+OAT: TCA under-run, dysbiosis markers`
 
 export default function VisitEditor() {
   const { id: patientIdParam, visitId } = useParams()
@@ -122,7 +124,7 @@ export default function VisitEditor() {
     const { error } = await supabase.rpc('save_visit', {
       p_visit: { id: visitId || null, patient_id: patient.id, visit_date: visit.visit_date, package_name: visit.package_name,
         raw_note: visit.raw_note, doctor_note: visit.doctor_note, status, ai_draft: aiDraft },
-      p_sections: CATEGORIES.map((c) => ({ category: c.key, content: sections[c.key] || '' })),
+      p_sections: SECTION_KEYS.map((k) => ({ category: k, content: sections[k] || '' })),
       p_findings: values.map((f, i) => ({ category: f.category, subcategory: clean(f.subcategory), test_code: clean(f.test_code),
         test_name: f.test_name, value_num: f.value_num === '' || isNaN(Number(f.value_num)) ? null : Number(f.value_num),
         unit: clean(f.unit), ref_range: clean(f.ref_range), flag: f.flag, sort_order: i })),
@@ -170,7 +172,7 @@ export default function VisitEditor() {
         {/* Step 2 */}
         <section className="panel">
           <h2><span className="step">2</span>ตรวจทานและแก้ไข</h2>
-          <p className="muted small">AI เรียบเรียงเป็นข้อความ 4 หมวด แก้ไขได้เหมือนแก้เอกสาร</p>
+          <p className="muted small">AI เรียบเรียงเป็น 5 หมวดแบบ MECE พร้อม Integrated Profile แก้ไขได้เหมือนแก้เอกสาร</p>
 
           {CATEGORIES.map((c) => (
             <section key={c.key} className={`sec-edit cat-${c.key}`}>
@@ -187,6 +189,20 @@ export default function VisitEditor() {
               />
             </section>
           ))}
+
+          <section className="sec-edit cat-integrated">
+            <header>
+              <h3>{INTEGRATED.name}</h3>
+              <span className="muted small">{INTEGRATED.hint}</span>
+            </header>
+            <textarea
+              className="sec-text"
+              rows={Math.min(Math.max((sections.integrated || '').split('\n').length + 1, 3), 10)}
+              placeholder="ยังไม่มี Integrated Profile"
+              value={sections.integrated || ''}
+              onChange={(e) => setSection('integrated', e.target.value)}
+            />
+          </section>
 
           {/* key numeric values for trends */}
           <div className="values-block">

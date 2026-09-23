@@ -158,6 +158,15 @@ export default function PatientProfile() {
                   </section>
                 )
               })}
+              {(() => {
+                const text = sections.find((s) => s.visit_id === visitId && s.category === 'integrated')?.content
+                return text ? (
+                  <section className="cat cat-integrated">
+                    <header><h2>Integrated Profile</h2></header>
+                    <div className="sec-body">{text.split('\n').map((line, i) => <p key={i}>{line}</p>)}</div>
+                  </section>
+                ) : null
+              })()}
             </div>
 
             <aside className="profile-side">

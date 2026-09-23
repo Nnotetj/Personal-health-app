@@ -5,7 +5,7 @@ import { invalidateCatalog, refText } from '../lib/catalog'
 import Modal from './Modal'
 
 const NUM_FIELDS = ['ref_low', 'ref_high', 'ref_low_f', 'ref_high_f', 'low_cutoff', 'high_cutoff']
-const blank = { code: '', name: '', category: 'conventional', subcategory: '', unit: '', ref_low: '', ref_high: '', ref_low_f: '', ref_high_f: '', low_cutoff: '', high_cutoff: '', ref_text: '', aliases: '', is_active: true, sort_order: 999 }
+const blank = { code: '', name: '', category: 'biomarker', subcategory: '', unit: '', ref_low: '', ref_high: '', ref_low_f: '', ref_high_f: '', low_cutoff: '', high_cutoff: '', ref_text: '', aliases: '', is_active: true, sort_order: 999 }
 
 export default function CatalogAdmin() {
   const [rows, setRows] = useState([])
@@ -33,7 +33,7 @@ export default function CatalogAdmin() {
           <option value="all">ทุกหมวด</option>
           {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.name}</option>)}
         </select>
-        <button className="btn" onClick={() => setEdit({ ...blank, _new: true, category: cat === 'all' ? 'conventional' : cat })}>เพิ่มการตรวจ</button>
+        <button className="btn" onClick={() => setEdit({ ...blank, _new: true, category: cat === 'all' ? 'biomarker' : cat })}>เพิ่มการตรวจ</button>
       </div>
       <p className="muted small">ค่าอ้างอิงเริ่มต้นเป็นค่าทั่วไปของผู้ใหญ่ ควรปรับให้ตรงกับแล็บที่คลินิกใช้ ชื่อเรียกอื่นช่วยให้ระบบจับคู่ชื่อที่หมอหรือ AI พิมพ์มา</p>
 

@@ -12,6 +12,8 @@
   --c-multiomic: #7345AE;
   --c-functional: #1B8063;
   --c-imaging: #AE681C;
+  --c-clinical: #B23A48;
+  --c-integrated: #1F2A37;
 
   --bad: #B3302C;
   --bad-bg: #FBECEB;
@@ -49,7 +51,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .boot { padding: 4rem; text-align: center; color: var(--ink-2); }
 
 /* ---------- category color hooks ---------- */
-.cat-conventional { --cat: var(--c-conventional); }
+.cat-biomarker    { --cat: var(--c-conventional); }
+.cat-clinical     { --cat: var(--c-clinical); }
+.cat-integrated   { --cat: var(--c-integrated); }
 .cat-multiomic    { --cat: var(--c-multiomic); }
 .cat-functional   { --cat: var(--c-functional); }
 .cat-imaging      { --cat: var(--c-imaging); }
@@ -304,6 +308,23 @@ table.s-next td.when { text-align: right; font-weight: 600; white-space: nowrap;
 .s-plan-group { border: 1px solid var(--line); border-radius: 2mm; padding: 2.5mm 3mm; }
 .s-plan-group h3 { font-size: 9.5pt; margin-bottom: 1mm; }
 .s-plan-group ul { margin: 0; padding-left: 4mm; font-size: 9.5pt; }
+
+/* patient profile (narrative, MECE) */
+.sheet.profile-sheet { gap: 3.5mm; font-size: 10pt; line-height: 1.5; }
+.p-intro { font-size: 10.5pt; }
+.p-intro span, .p-themes p span, .p-goals span { white-space: pre-line; }
+ol.p-themes { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 3mm; }
+ol.p-themes li { break-inside: avoid; }
+ol.p-themes h2 { font-size: 11pt; margin: 0 0 1mm; display: flex; gap: 1.5mm; align-items: baseline; color: var(--ink); }
+.p-num { color: var(--c-conventional); }
+ol.p-themes p { margin: 0 0 1mm; }
+.p-plan { background: var(--line-2); border-radius: 1.5mm; padding: 1.2mm 2.5mm; }
+.p-plan strong { color: var(--c-conventional); }
+.p-goals { border-top: 2px solid var(--ink); padding-top: 2.5mm; break-inside: avoid; }
+.p-goals ul { margin: 0 0 1.5mm; padding-left: 4mm; }
+.p-goals li { margin-bottom: .6mm; }
+.p-closing { margin: 0; font-style: italic; }
+.sheet .e { width: 100%; }
 
 .sheet-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; gap: 6mm; font-size: 8.5pt; color: var(--ink-2); border-top: 1px solid var(--line); padding-top: 3mm; }
 .sheet-foot p { margin: 0; max-width: 95mm; }

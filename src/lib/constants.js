@@ -1,39 +1,52 @@
 export const CATEGORIES = [
   {
-    key: 'conventional',
-    name: 'Conventional biomarkers',
-    th: 'ผลเลือดพื้นฐาน',
-    en: 'Routine blood & urine tests',
-    hint: 'CBC, FBG, HbA1c, CMP, lipid, thyroid, hormone, vitamin',
-    subs: ['CBC', 'Glucose / insulin', 'Lipid', 'Liver', 'Kidney', 'Electrolytes', 'Thyroid', 'Hormone',
-      'Vitamin / mineral', 'Inflammation', 'Tumor marker', 'Urinalysis', 'Other'],
-  },
-  {
-    key: 'multiomic',
-    name: 'Multiomic lab',
-    th: 'ผลตรวจระดับยีนและโมเลกุล',
-    en: 'Genes & molecular tests',
-    hint: 'Genetic, epigenetic, transcriptomic, proteomic, metabolomic, microbiomic',
-    subs: ['Genetic', 'Epigenetic', 'Transcriptomic', 'Proteomic', 'Metabolomic', 'Microbiomic'],
+    key: 'clinical',
+    name: 'Clinical',
+    th: 'ประวัติสุขภาพ',
+    en: 'Health history',
+    hint: 'U/D, PHx, อาการ, ยา, family history, lifestyle / exposure',
+    subs: ['Underlying disease', 'Past history', 'Symptom / concern', 'Medication / supplement',
+      'Family history', 'Lifestyle / exposure', 'Other'],
   },
   {
     key: 'functional',
-    name: 'Physiologic / functional',
+    name: 'Functional',
     th: 'สมรรถภาพร่างกาย',
     en: 'Body function & fitness',
-    hint: 'Body composition, VO₂ max, grip strength, HRV, BP, CGM',
-    subs: ['Body composition', 'VO₂ max', 'Grip strength', 'HRV', 'Blood pressure', 'Spirometry', 'CGM',
-      'Sleep study', 'Other'],
+    hint: 'Body composition, fitness, strength, VO₂max, REE, functional capacity',
+    subs: ['Body composition', 'VO₂ max', 'Grip strength', 'Fitness age', 'REE', 'HRV', 'Blood pressure',
+      'Spirometry', 'CGM', 'Sleep study', 'Bone', 'Other'],
+  },
+  {
+    key: 'biomarker',
+    name: 'Biomarker',
+    th: 'ผลเลือดและ biomarker',
+    en: 'Blood & biomarker tests',
+    hint: 'Conventional labs + advanced biomarkers (non-omics)',
+    subs: ['CBC', 'Glucose / insulin', 'Lipid', 'Liver', 'Kidney', 'Electrolytes', 'Thyroid', 'Hormone',
+      'Vitamin / mineral', 'Fatty acid', 'Inflammation', 'Food sensitivity', 'Tumor marker', 'Advanced biomarker',
+      'Urinalysis', 'Other'],
   },
   {
     key: 'imaging',
     name: 'Imaging',
     th: 'ผลเอกซเรย์และอัลตราซาวด์',
     en: 'Scans & imaging',
-    hint: 'Ultrasound, X-ray, CT, MRI, mammogram, DEXA, echo, CAC',
+    hint: 'Structural / functional imaging: US, CT, MRI, echo, CIMT, CAC, DEXA',
     subs: ['Ultrasound', 'X-ray', 'CT', 'MRI', 'Mammogram', 'DEXA', 'Echocardiogram', 'CAC score', 'Other'],
   },
+  {
+    key: 'multiomic',
+    name: 'Multi-omics',
+    th: 'ผลตรวจระดับยีนและโมเลกุล',
+    en: 'Genes & molecular tests',
+    hint: 'Genome, epigenome, transcriptome, proteome, metabolome, microbiome',
+    subs: ['Genome', 'Epigenome', 'Transcriptome', 'Proteome', 'Metabolome', 'Microbiome'],
+  },
 ]
+
+// ช่องสรุปรวมท้ายโปรไฟล์ (เก็บใน visit_sections แต่ไม่ใช่หมวดของค่าตัวเลข)
+export const INTEGRATED = { key: 'integrated', name: 'Integrated Profile', hint: 'ภาพรวมและลำดับความสำคัญ 2–4 ประโยค' }
 
 export const CAT = Object.fromEntries(CATEGORIES.map((c) => [c.key, c]))
 
@@ -66,30 +79,24 @@ export const DOMAINS = {
 
 export const T = {
   th: {
-    title: 'สรุปผลสุขภาพและแผนดูแลเฉพาะคุณ',
+    title: 'โปรไฟล์สุขภาพเฉพาะตัวของคุณ',
     date: 'วันที่ตรวจ', age: 'อายุ', years: 'ปี', hn: 'HN',
-    overview: 'ภาพรวม',
-    numbers: 'ตัวเลขสำคัญ',
-    priorities: 'สิ่งที่ควรดูแลเรียงตามความสำคัญ',
-    why: 'ทำไมสำคัญ',
-    plan: 'แผนการดูแล',
-    next: 'นัดหมายและการตรวจครั้งต่อไป',
+    plan: 'แผน',
+    goals: 'เป้าหมายสุขภาพหลักของคุณ',
+    followUp: 'ติดตามต่อเนื่อง',
     doctor: 'แพทย์ผู้ดูแล',
-    status: { good: 'ดี', watch: 'เฝ้าระวัง', act: 'ควรแก้ไข' },
     disclaimer: 'เอกสารนี้สรุปจากผลตรวจเพื่อใช้ประกอบคำแนะนำของแพทย์ หากมีอาการผิดปกติโปรดติดต่อแพทย์',
+    goalLabels: ['อันดับแรก', 'อันดับสอง', 'อันดับสาม'],
   },
   en: {
-    title: 'Your health summary & personal plan',
+    title: 'My Personalized Health Profile',
     date: 'Check-up date', age: 'Age', years: 'years', hn: 'HN',
-    overview: 'Overview',
-    numbers: 'Key numbers',
-    priorities: 'What to focus on, in order',
-    why: 'Why it matters',
-    plan: 'Your plan',
-    next: 'Next appointments & tests',
+    plan: 'Plan',
+    goals: 'Your Main Health Goals',
+    followUp: 'Continue follow-up',
     doctor: 'Your doctor',
-    status: { good: 'Good', watch: 'Watch', act: 'Act on' },
     disclaimer: 'This summary supports your doctor’s advice. Contact the clinic if you feel unwell.',
+    goalLabels: ['First', 'Second', 'Third'],
   },
 }
 
@@ -115,29 +122,48 @@ export const uid = () => crypto.randomUUID()
 export const isAbnormal = (f) => f.flag && f.flag !== 'normal'
 
 // Build a deterministic summary (no AI) from structured data
-export function buildSummaryFromData({ findings, problems, plan }, lang) {
+// รูปแบบ: { intro, themes:[{title, body:[], plan}], goals:[{label, text}], follow_up, closing }
+export function buildSummaryFromData({ problems, plan }, lang) {
   const t = T[lang]
   const top = [...problems].sort(prioritySort)
-  const abnormal = findings.filter(isAbnormal).slice(0, 4)
-  const byDomain = {}
-  plan.forEach((p) => { (byDomain[p.domain] ||= []).push(p.action + (p.target ? ` (${p.target})` : '')) })
+  const actionsFor = (id) => plan.filter((p) => p.problem_id === id && p.domain !== 'follow_up_test').map((p) => p.action)
   return {
-    headline: top.length
+    intro: top.length
       ? (lang === 'th'
         ? `ผลตรวจครั้งนี้มี ${top.length} เรื่องหลักที่ควรดูแล โดยเริ่มจาก “${top[0].title}”`
-        : `This check-up shows ${top.length} main areas to work on, starting with “${top[0].title}”.`)
-      : t.overview,
-    key_numbers: abnormal.map((f) => ({
-      label: f.test_name,
-      value: [f.value_text || f.value_num, f.unit].filter(Boolean).join(' '),
-      status: f.flag === 'borderline' ? 'watch' : 'act',
-    })),
-    priorities: top.slice(0, 4).map((p) => ({ title: p.title, why: p.detail || '', level: p.priority })),
-    plan: Object.entries(byDomain).filter(([d]) => d !== 'follow_up_test')
-      .map(([domain, actions]) => ({ domain, actions: actions.slice(0, 3) })),
-    next_steps: plan.filter((p) => p.domain === 'follow_up_test' || p.domain === 'referral')
-      .map((p) => ({ what: p.action, when: p.timeframe || '' })),
+        : `Your health check shows ${top.length} main areas to work on, starting with “${top[0].title}”.`)
+      : '',
+    themes: top.slice(0, 6).map((p) => ({ title: p.title, body: [p.detail || ''], plan: actionsFor(p.id).join(', ') })),
+    goals: top.slice(0, 3).map((p, i) => ({ label: t.goalLabels[i], text: p.title })),
+    follow_up: plan.filter((p) => p.domain === 'follow_up_test' || p.domain === 'referral').map((p) => p.action).join(', '),
+    closing: '',
   }
+}
+
+// แปลงสรุปรูปแบบเก่า (headline / priorities / plan / next_steps) ที่บันทึกไว้แล้วให้แสดงได้
+export function toProfileShape(c, lang) {
+  if (!c || c.themes) return c
+  const t = T[lang]
+  return {
+    intro: c.headline || '',
+    themes: (c.priorities || []).map((p) => ({ title: p.title, body: [p.why || ''], plan: '' })),
+    goals: (c.priorities || []).slice(0, 3).map((p, i) => ({ label: t.goalLabels[i], text: p.title })),
+    follow_up: (c.next_steps || []).map((n) => [n.what, n.when].filter(Boolean).join(' ')).join(', '),
+    closing: '',
+  }
+}
+
+// นับคำ (รองรับภาษาไทยที่ไม่มีช่องว่าง)
+export function countWords(c) {
+  if (!c) return 0
+  const text = [c.intro, ...(c.themes || []).flatMap((x) => [x.title, ...(x.body || []), x.plan]),
+    ...(c.goals || []).map((g) => g.text), c.follow_up, c.closing].filter(Boolean).join(' ')
+  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+    let n = 0
+    for (const s of new Intl.Segmenter(undefined, { granularity: 'word' }).segment(text)) if (s.isWordLike) n++
+    return n
+  }
+  return text.split(/\s+/).filter(Boolean).length
 }
 
 export const prioritySort = (a, b) =>

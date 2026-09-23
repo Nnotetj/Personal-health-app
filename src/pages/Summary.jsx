@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase, aiAssist, CLINIC_NAME } from '../lib/supabase'
-import { CATEGORIES, DOMAINS, PRIORITIES, T, ageFrom, buildSummaryFromData, fmtDate, isAbnormal, prioritySort } from '../lib/constants'
+import { T, ageFrom, buildSummaryFromData, countWords, fmtDate, prioritySort, toProfileShape } from '../lib/constants'
 
 export default function Summary() {
   const { visitId } = useParams()
@@ -33,7 +33,7 @@ export default function Summary() {
 
   useEffect(() => {
     if (!data) return
-    setContent(saved[lang]?.content || buildSummaryFromData(data, lang))
+    setContent(toProfileShape(saved[lang]?.content, lang) || buildSummaryFromData(data, lang))
     setAiUsed(!!saved[lang]?.ai_generated)
     setEdit(false); setMsg(null)
   }, [data, lang, saved])
@@ -69,11 +69,12 @@ export default function Summary() {
 
   if (!data || !content) return <div className="page muted">กำลังโหลด…</div>
   const t = T[lang]
-  const { patient, visit, findings } = data
+  const { patient, visit } = data
+  const words = countWords(content)
   const upd = (path, val) => setContent((c) => setIn(c, path, val))
   const E = ({ path, value, multi, className, placeholder }) => edit
     ? (multi
-      ? <textarea className={`e ${className || ''}`} rows={2} defaultValue={value} placeholder={placeholder} onBlur={(e) => upd(path, e.target.value)} />
+      ? <textarea className={`e ${className || ''}`} rows={3} defaultValue={value} placeholder={placeholder} onBlur={(e) => upd(path, e.target.value)} />
       : <input className={`e ${className || ''}`} defaultValue={value} placeholder={placeholder} onBlur={(e) => upd(path, e.target.value)} />)
     : <span className={className}>{value}</span>
 
@@ -90,11 +91,12 @@ export default function Summary() {
         <button className="btn-quiet" onClick={() => setEdit(!edit)}>{edit ? 'ดูตัวอย่าง' : 'แก้ไขข้อความ'}</button>
         <button className="btn-quiet" onClick={save} disabled={!!busy}>บันทึกสรุป</button>
         <button className="btn" onClick={() => { setEdit(false); setTimeout(() => window.print(), 50) }}>พิมพ์</button>
+        <span className={`small ${words > 500 ? 'alert inline error' : 'muted'}`}>{words} / 500 คำ</span>
         {msg && <span className={`alert inline ${msg.type}`}>{msg.text}</span>}
         {!saved[lang] && !msg && <span className="muted small">ยังไม่ได้บันทึกฉบับ{lang === 'th' ? 'ภาษาไทย' : 'ภาษาอังกฤษ'}</span>}
       </div>
 
-      <article className="sheet" lang={lang}>
+      <article className="sheet profile-sheet" lang={lang}>
         <header className="sheet-head">
           <div>
             <p className="clinic">{CLINIC_NAME}</p>
@@ -108,86 +110,47 @@ export default function Summary() {
           </dl>
         </header>
 
-        <div className="coverage">
-          {CATEGORIES.map((c) => {
-            const all = findings.filter((f) => f.category === c.key)
-            const abn = all.filter(isAbnormal).length
-            return (
-              <div key={c.key} className={`cov cat-${c.key}`}>
-                <strong>{c[lang]}</strong>
-                <span>{all.length === 0 ? (lang === 'th' ? 'ไม่ได้ตรวจ' : 'Not tested')
-                  : abn === 0 ? (lang === 'th' ? `${all.length} รายการ ปกติทั้งหมด` : `${all.length} tests, all in range`)
-                    : (lang === 'th' ? `${all.length} รายการ ควรดูแล ${abn}` : `${all.length} tests, ${abn} to work on`)}</span>
-              </div>
-            )
-          })}
-        </div>
-
-        <section className="headline">
-          <E path={['headline']} value={content.headline} multi className="headline-text" />
-        </section>
-
-        <div className="sheet-cols">
-          <section>
-            <h2>{t.priorities}</h2>
-            <ol className="s-prios">
-              {(content.priorities || []).map((p, i) => (
-                <li key={i} className={`lvl-${p.level}`}>
-                  <div className="s-prio-head">
-                    <E path={['priorities', i, 'title']} value={p.title} className="s-prio-title" />
-                    <span className="s-lvl">{PRIORITIES[p.level]?.[lang] || ''}</span>
-                  </div>
-                  <E path={['priorities', i, 'why']} value={p.why} multi className="s-why" />
-                </li>
-              ))}
-            </ol>
+        {(content.intro || edit) && (
+          <section className="p-intro">
+            <E path={['intro']} value={content.intro} multi placeholder="ภาพรวมสั้น ๆ: จุดดีก่อน แล้วค่อยเรื่องที่ควรโฟกัส" />
           </section>
+        )}
 
-          {(content.key_numbers || []).length > 0 && (
-            <section>
-              <h2>{t.numbers}</h2>
-              <table className="s-numbers">
-                <tbody>
-                  {content.key_numbers.map((k, i) => (
-                    <tr key={i}>
-                      <td><E path={['key_numbers', i, 'label']} value={k.label} /></td>
-                      <td className="num"><E path={['key_numbers', i, 'value']} value={k.value} /></td>
-                      <td><span className={`s-status st-${k.status}`}>{t.status[k.status] || k.status}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          )}
-        </div>
+        <ol className="p-themes">
+          {(content.themes || []).map((th, i) => (
+            <li key={i}>
+              <h2>
+                <span className="p-num">{i + 1}.</span>
+                <E path={['themes', i, 'title']} value={th.title} placeholder="หัวข้อ" />
+                {edit && <button className="btn-quiet danger no-print" onClick={() => setContent((c) => ({ ...c, themes: c.themes.filter((_, j) => j !== i) }))}>ลบหัวข้อ</button>}
+              </h2>
+              {(th.body || []).map((para, pi) => (
+                <p key={pi}><E path={['themes', i, 'body', pi]} value={para} multi /></p>
+              ))}
+              {(th.plan || edit) && (
+                <p className="p-plan"><strong>{t.plan}:</strong> <E path={['themes', i, 'plan']} value={th.plan} multi placeholder="สิ่งที่ควรทำ (เว้นว่างได้)" /></p>
+              )}
+            </li>
+          ))}
+        </ol>
+        {edit && (
+          <button className="btn-add no-print" onClick={() => setContent((c) => ({ ...c, themes: [...(c.themes || []), { title: '', body: [''], plan: '' }] }))}>เพิ่มหัวข้อ</button>
+        )}
 
-        <section>
-          <h2>{t.plan}</h2>
-          <div className="s-plan">
-            {(content.plan || []).map((g, gi) => (
-              <div key={gi} className="s-plan-group">
-                <h3>{DOMAINS[g.domain]?.[lang] || g.domain}</h3>
-                <ul>
-                  {(g.actions || []).map((a, ai) => <li key={ai}><E path={['plan', gi, 'actions', ai]} value={a} multi /></li>)}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {(content.next_steps || []).length > 0 && (
-          <section>
-            <h2>{t.next}</h2>
-            <table className="s-next">
-              <tbody>
-                {content.next_steps.map((n, i) => (
-                  <tr key={i}>
-                    <td><E path={['next_steps', i, 'what']} value={n.what} /></td>
-                    <td className="when"><E path={['next_steps', i, 'when']} value={n.when} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {((content.goals || []).length > 0 || content.follow_up || content.closing) && (
+          <section className="p-goals">
+            <h2>{t.goals}</h2>
+            <ul>
+              {(content.goals || []).map((g, i) => (
+                <li key={i}><strong>{g.label}:</strong> <E path={['goals', i, 'text']} value={g.text} multi /></li>
+              ))}
+              {(content.follow_up || edit) && (
+                <li><strong>{t.followUp}:</strong> <E path={['follow_up']} value={content.follow_up} multi /></li>
+              )}
+            </ul>
+            {(content.closing || edit) && (
+              <p className="p-closing"><E path={['closing']} value={content.closing} multi placeholder="ประโยคปิดท้ายให้กำลังใจ" /></p>
+            )}
           </section>
         )}
 

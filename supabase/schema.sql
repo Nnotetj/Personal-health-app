@@ -8,7 +8,7 @@ create extension if not exists pgcrypto;
 -- ---------- Enums ----------------------------------------------------
 do $$ begin
   create type app_role         as enum ('doctor', 'admin');
-  create type finding_category as enum ('conventional', 'multiomic', 'functional', 'imaging');
+  create type finding_category as enum ('biomarker', 'multiomic', 'functional', 'imaging', 'clinical', 'integrated');
   create type finding_flag     as enum ('normal', 'low', 'high', 'borderline', 'abnormal', 'critical');
   create type access_level     as enum ('view', 'edit');
   create type priority_level   as enum ('high', 'medium', 'low');
@@ -121,7 +121,7 @@ create table if not exists public.patient_summaries (
   visit_id     uuid not null references public.visits(id) on delete cascade,
   patient_id   uuid not null references public.patients(id) on delete cascade,
   language     summary_lang not null,
-  content      jsonb not null,   -- {headline, key_numbers[], priorities[], plan[], next_steps[]}
+  content      jsonb not null,   -- {intro, themes[{title, body[], plan}], goals[{label, text}], follow_up, closing}
   ai_generated boolean not null default false,
   updated_by   uuid default auth.uid() references public.profiles(id),
   updated_at   timestamptz not null default now(),
