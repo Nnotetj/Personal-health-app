@@ -14,6 +14,7 @@ export default function PatientProfile() {
   const [patient, setPatient] = useState(null)
   const [visits, setVisits] = useState([])
   const [allFindings, setAllFindings] = useState([])
+  const [sections, setSections] = useState([])
   const [problems, setProblems] = useState([])
   const [plan, setPlan] = useState([])
   const [access, setAccess] = useState(null)
@@ -24,14 +25,15 @@ export default function PatientProfile() {
   const [notFound, setNotFound] = useState(false)
 
   async function load() {
-    const [{ data: p }, { data: v }, { data: f }, { data: a }] = await Promise.all([
+    const [{ data: p }, { data: v }, { data: f }, { data: a }, { data: sec }] = await Promise.all([
       supabase.from('patients').select('*').eq('id', id).maybeSingle(),
       supabase.from('visits').select('*, author:profiles!visits_created_by_fkey(full_name)').eq('patient_id', id).order('visit_date', { ascending: false }),
       supabase.from('findings').select('*').eq('patient_id', id).order('sort_order'),
       supabase.from('patient_access').select('level').eq('patient_id', id).eq('doctor_id', profile.id).maybeSingle(),
+      supabase.from('visit_sections').select('*').eq('patient_id', id),
     ])
     if (!p) { setNotFound(true); return }
-    setPatient(p); setVisits(v || []); setAllFindings(f || []); setAccess(a)
+    setPatient(p); setVisits(v || []); setAllFindings(f || []); setAccess(a); setSections(sec || [])
     setVisitId((cur) => cur || v?.[0]?.id || null)
   }
   useEffect(() => { load() }, [id])
@@ -109,7 +111,7 @@ export default function PatientProfile() {
             <div className="profile-main">
               <div className="row-between">
                 <p className="muted small">
-                  {findings.length} รายการ, ผิดปกติ {findings.filter(isAbnormal).length} รายการ
+                  ค่าติดตาม {findings.length} รายการ, ผิดปกติ {findings.filter(isAbnormal).length} รายการ
                   {visit?.author?.full_name && `, บันทึกโดย ${visit.author.full_name}`}
                 </p>
                 <label className="switch">
@@ -121,6 +123,7 @@ export default function PatientProfile() {
               {CATEGORIES.map((c) => {
                 const rows = shown.filter((f) => f.category === c.key)
                 const abn = findings.filter((f) => f.category === c.key && isAbnormal(f)).length
+                const text = sections.find((s) => s.visit_id === visitId && s.category === c.key)?.content
                 return (
                   <section key={c.key} className={`cat cat-${c.key}`}>
                     <header>
@@ -128,7 +131,9 @@ export default function PatientProfile() {
                       <span className="muted small">{c.hint}</span>
                       {abn > 0 && <span className="count">{abn} ผิดปกติ</span>}
                     </header>
-                    {rows.length === 0 ? <p className="muted small cat-empty">{pertinentOnly ? 'ไม่มีผลผิดปกติในหมวดนี้' : 'ไม่มีผลในหมวดนี้'}</p> : (
+                    {text ? <div className="sec-body">{text.split('\n').map((line, i) => (
+                      <p key={i} className={line.trim().startsWith('สรุป') ? 'sec-sum' : ''}>{line}</p>))}</div> : null}
+                    {rows.length === 0 ? (text ? null : <p className="muted small cat-empty">ไม่มีข้อมูลในหมวดนี้</p>) : (
                       <div className="table-scroll">
                         <table className="findings">
                           <thead><tr><th>การตรวจ</th><th>ผล</th><th>ค่าอ้างอิง</th><th>สถานะ</th><th>แนวโน้ม</th><th>การแปลผล</th></tr></thead>
