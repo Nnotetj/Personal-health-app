@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase, CLINIC_NAME } from '../lib/supabase'
 
 export default function Login() {
-  const [mode, setMode] = useState('signin')
+  const [mode, setMode] = useState(() => (new URLSearchParams(window.location.search).get('mode') === 'signup' ? 'signup' : 'signin'))
   const [form, setForm] = useState({ email: '', password: '', full_name: '', license_no: '' })
   const [msg, setMsg] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -42,6 +42,7 @@ export default function Login() {
         <button type="button" className="btn-quiet" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setMsg(null) }}>
           {mode === 'signin' ? 'ยังไม่มีบัญชี? ลงทะเบียนแพทย์ใหม่' : 'มีบัญชีแล้ว? เข้าสู่ระบบ'}
         </button>
+        <a className="auth-back" href="/welcome.html">กลับไปหน้าแนะนำ</a>
       </form>
     </div>
   )
