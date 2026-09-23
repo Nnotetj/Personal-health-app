@@ -62,8 +62,15 @@ Line style
 
 "key_values": up to 12 NUMERIC results worth tracking over time. Numbers only. category must be one of
 clinical, functional, biomarker, imaging, multiomic.
-"problems": 2 to 6, ranked by importance for proactive prevention; each with "title" and a 1-2 sentence "detail".
-"plan": each item may reference a problem by index via problem_index (0-based) or null.
+"problem_list" (inside sections): 2 to 6 items ranked by importance for proactive prevention. Each item is ONE line:
+  "<n>. <problem title> (High|Medium|Low) — <1-2 sentence detail with the supporting findings and why it matters>"
+  e.g. "1. Iron-deficiency anemia secondary to menorrhagia (High) — Hb 10.5 g/dL, MCV 74, ferritin 8 ng/mL with 7-day heavy menses."
+"plan_text" (inside sections): 3 to 10 items, ONE line each, grouped in problem order:
+  "[#<problem number>] <Domain>: <action> | Target: <target> | <timeframe>"
+  Use "[General]" instead of "[#n]" for plans not tied to one problem. Domain is a plain word such as
+  Nutrition, Exercise, Sleep, Stress, Supplement, Medication, Follow-up test, Referral, Lifestyle.
+  e.g. "[#1] Supplement: Start oral iron (ferrous fumarate) | Target: ferritin >30 ng/mL | Recheck CBC and ferritin in 8-12 weeks"
+problem_list and plan_text do not count toward the 500-word limit and have no "สรุป:" line.
 
 FORMAT EXAMPLE (style only; never copy these findings into another patient)
 Note (excerpt):
@@ -149,9 +156,9 @@ const EXTRACT_SCHEMA = {
       type: "object",
       properties: {
         clinical: strArr, functional: strArr, biomarker: strArr, imaging: strArr, multiomic: strArr,
-        integrated: str,
+        integrated: str, problem_list: strArr, plan_text: strArr,
       },
-      required: ["clinical", "functional", "biomarker", "imaging", "multiomic", "integrated"],
+      required: ["clinical", "functional", "biomarker", "imaging", "multiomic", "integrated", "problem_list", "plan_text"],
     },
     key_values: {
       type: "array",
@@ -164,34 +171,8 @@ const EXTRACT_SCHEMA = {
         required: ["category", "test_name", "value_num", "flag"],
       },
     },
-    problems: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          title: str, detail: str, category: cat,
-          priority: { type: "string", enum: ["high", "medium", "low"] },
-        },
-        required: ["title", "detail", "priority"],
-      },
-    },
-    plan: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          problem_index: { type: ["integer", "null"] },
-          domain: {
-            type: "string",
-            enum: ["nutrition", "exercise", "sleep", "stress", "supplement", "medication", "follow_up_test", "referral", "other"],
-          },
-          action: str, target: str, timeframe: str,
-        },
-        required: ["domain", "action"],
-      },
-    },
   },
-  required: ["sections", "key_values", "problems", "plan"],
+  required: ["sections", "key_values"],
 };
 
 const SUMMARY_SCHEMA = {
@@ -308,11 +289,18 @@ Deno.serve(async (req) => {
         for (const row of [...(out?.key_values ?? []), ...(out?.problems ?? [])]) {
           if (!CATEGORIES.includes(row.category)) row.category = "biomarker";
         }
+        const DOMAINS = ["nutrition", "exercise", "sleep", "stress", "supplement", "medication", "follow_up_test", "referral", "other"];
+        const FLAGS = ["normal", "low", "high", "borderline", "abnormal", "critical"];
+        for (const p of out?.plan ?? []) if (!DOMAINS.includes(p.domain)) p.domain = "other";
+        for (const p of out?.problems ?? []) if (!["high", "medium", "low"].includes(p.priority)) p.priority = "medium";
+        for (const v of out?.key_values ?? []) if (!FLAGS.includes(v.flag)) v.flag = "normal";
         const sec = out?.sections ?? {};
         for (const k of Object.keys(sec)) {
-          if (Array.isArray(sec[k])) {
-            sec[k] = sec[k].map((l: string) => (String(l).startsWith("สรุป") ? l : `- ${l}`)).join("\n");
-          }
+          if (!Array.isArray(sec[k])) continue;
+          // ปัญหาและแผนมีเลขลำดับอยู่แล้ว ไม่ต้องใส่ bullet
+          sec[k] = (k === "problem_list" || k === "plan_text")
+            ? sec[k].join("\n")
+            : sec[k].map((l: string) => (String(l).startsWith("สรุป") ? l : `- ${l}`)).join("\n");
         }
         return out;
       };
@@ -330,14 +318,12 @@ Deno.serve(async (req) => {
           ...Object.fromEntries(Object.entries(y ?? {}).filter(([, v]) => (Array.isArray(v) ? v.length : v))),
         });
         const [a, b] = await Promise.all([
-          callClaude(only("clinical, functional, biomarker", 'Return "key_values" as usual but "problems" and "plan" as empty arrays.'), prompt, EXTRACT_SCHEMA, deadline),
-          callClaude(only("imaging, multiomic, integrated", "Return key_values, problems and plan for the WHOLE check-up. The integrated text covers the WHOLE check-up."), prompt, EXTRACT_SCHEMA, deadline),
+          callClaude(only("clinical, functional, biomarker", 'Return "key_values" as usual.'), prompt, EXTRACT_SCHEMA, deadline),
+          callClaude(only("imaging, multiomic, integrated, problem_list, plan_text", "Return key_values as usual. integrated, problem_list and plan_text cover the WHOLE check-up."), prompt, EXTRACT_SCHEMA, deadline),
         ]);
         return json(linesToText({
           sections: merge(a.sections, b.sections),
           key_values: [...(a.key_values ?? []), ...(b.key_values ?? [])].slice(0, 16),
-          problems: b.problems ?? [],
-          plan: b.plan ?? [],
         }));
       }
     }

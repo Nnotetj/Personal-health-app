@@ -47,6 +47,21 @@ export const CATEGORIES = [
 
 // ช่องสรุปรวมท้ายโปรไฟล์ (เก็บใน visit_sections แต่ไม่ใช่หมวดของค่าตัวเลข)
 export const INTEGRATED = { key: 'integrated', name: 'Integrated Profile', hint: 'ภาพรวมและลำดับความสำคัญ 2–4 ประโยค' }
+export const PROBLEM_LIST = { key: 'problem_list', name: 'ปัญหาเรียงตามความสำคัญ', hint: '1 บรรทัดต่อ 1 ปัญหา เรียงจากสำคัญที่สุด' }
+export const PLAN_TEXT = { key: 'plan_text', name: 'Plan of management', hint: '1 บรรทัดต่อ 1 แผน' }
+
+// แปลงปัญหา/แผนแบบตารางเดิม (ข้อมูลเก่า) เป็นข้อความ
+export function problemsToText(problems) {
+  return [...problems].sort(prioritySort).map((p, i) =>
+    `${i + 1}. ${p.title}${PRIORITIES[p.priority] ? ` (${PRIORITIES[p.priority].label})` : ''}${p.detail ? ` — ${p.detail}` : ''}`).join('\n')
+}
+export function planToText(plan, problems) {
+  const order = [...problems].sort(prioritySort).map((p) => p.id)
+  return plan.map((x) => {
+    const n = order.indexOf(x.problem_id)
+    return `${n >= 0 ? `[#${n + 1}] ` : ''}${DOMAINS[x.domain]?.label || 'Other'}: ${x.action}${x.target ? ` | Target: ${x.target}` : ''}${x.timeframe ? ` | ${x.timeframe}` : ''}`
+  }).join('\n')
+}
 
 export const CAT = Object.fromEntries(CATEGORIES.map((c) => [c.key, c]))
 
@@ -123,8 +138,18 @@ export const isAbnormal = (f) => f.flag && f.flag !== 'normal'
 
 // Build a deterministic summary (no AI) from structured data
 // รูปแบบ: { intro, themes:[{title, body:[], plan}], goals:[{label, text}], follow_up, closing }
-export function buildSummaryFromData({ problems, plan }, lang) {
+export function buildSummaryFromData({ problems, plan, sections = [] }, lang) {
   const t = T[lang]
+  const listText = sections.find((x) => x.category === 'problem_list')?.content || ''
+  if (!problems.length && listText.trim()) {
+    const lines = listText.split('\n').map((l) => l.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean)
+    return {
+      intro: '',
+      themes: lines.slice(0, 6).map((l) => { const [title, ...rest] = l.split(' — '); return { title, body: [rest.join(' — ')], plan: '' } }),
+      goals: lines.slice(0, 3).map((l, i) => ({ label: t.goalLabels[i], text: l.split(' — ')[0] })),
+      follow_up: '', closing: '',
+    }
+  }
   const top = [...problems].sort(prioritySort)
   const actionsFor = (id) => plan.filter((p) => p.problem_id === id && p.domain !== 'follow_up_test').map((p) => p.action)
   return {

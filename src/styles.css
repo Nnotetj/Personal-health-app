@@ -400,3 +400,8 @@ textarea.sec-text { font-size: .92rem; line-height: 1.6; }
   .v-row .w-name { grid-column: span 2; }
   .v-row > button { grid-column: span 3; justify-self: end; }
 }
+
+/* problem list / plan as editable text */
+.text-box { margin-top: 1rem; }
+.text-box h3 .muted { font-weight: 400; margin-left: .4rem; }
+.text-line { margin: 0 0 .35rem; }

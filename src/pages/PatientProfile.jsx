@@ -170,6 +170,16 @@ export default function PatientProfile() {
             </div>
 
             <aside className="profile-side">
+              {[['problem_list', 'ปัญหาเรียงตามความสำคัญ'], ['plan_text', 'Plan of management']].map(([key, label]) => {
+                const text = sections.find((s) => s.visit_id === visitId && s.category === key)?.content
+                return text ? (
+                  <section key={key} className="panel">
+                    <h2>{label}</h2>
+                    <div className="small">{text.split('\n').map((line, i) => <p key={i} className="text-line">{line}</p>)}</div>
+                  </section>
+                ) : null
+              })}
+              {!sections.some((s) => s.visit_id === visitId && s.category === 'problem_list') && (
               <section className="panel">
                 <h2>ปัญหาเรียงตามความสำคัญ</h2>
                 {problems.length === 0 ? <p className="muted small">ยังไม่มีรายการปัญหา</p> : (
@@ -202,6 +212,7 @@ export default function PatientProfile() {
                   </>
                 )}
               </section>
+              )}
 
               {visit?.doctor_note && (
                 <section className="panel">

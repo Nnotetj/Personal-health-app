@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase, aiAssist } from '../lib/supabase'
-import { CATEGORIES, INTEGRATED, DOMAINS, FLAGS, PRIORITIES, ageFrom, uid } from '../lib/constants'
+import { CATEGORIES, INTEGRATED, PROBLEM_LIST, PLAN_TEXT, FLAGS, ageFrom, planToText, problemsToText, uid } from '../lib/constants'
+
+// กันค่าที่ฐานข้อมูลไม่รู้จัก (AI บางครั้งตั้งชื่อเอง)
+const okFlag = (f) => (FLAGS[f] ? f : 'normal')
+const okCategory = (c) => (CATEGORIES.some((x) => x.key === c) ? c : 'biomarker')
 import { loadCatalog, normalizeFinding, computeFlag, unitMismatch } from '../lib/catalog'
 
 const emptyValue = (category = 'biomarker') =>
   ({ _k: uid(), _manual: true, category, test_code: '', test_name: '', value_num: '', unit: '', ref_range: '', flag: 'normal' })
-const emptyProblem = () => ({ id: uid(), title: '', detail: '', priority: 'medium', category: '', status: 'active' })
-const emptyPlan = () => ({ _k: uid(), problem_id: '', domain: 'nutrition', action: '', target: '', timeframe: '' })
-const SECTION_KEYS = [...CATEGORIES.map((c) => c.key), INTEGRATED.key]
+const SECTION_KEYS = [...CATEGORIES.map((c) => c.key), INTEGRATED.key, PROBLEM_LIST.key, PLAN_TEXT.key]
 const emptySections = () => Object.fromEntries(SECTION_KEYS.map((k) => [k, '']))
 
 const PLACEHOLDER = `ตัวอย่าง:
@@ -33,8 +35,6 @@ export default function VisitEditor() {
   const [visit, setVisit] = useState({ visit_date: new Date().toISOString().slice(0, 10), package_name: 'Full wellness package', raw_note: '', doctor_note: '', status: 'draft' })
   const [sections, setSections] = useState(emptySections())
   const [values, setValues] = useState([])
-  const [problems, setProblems] = useState([])
-  const [plan, setPlan] = useState([])
   const [aiDraft, setAiDraft] = useState(null)
   const [showValues, setShowValues] = useState(false)
   const [busy, setBusy] = useState(null)
@@ -58,10 +58,12 @@ export default function VisitEditor() {
         if (!v) { setErr('ไม่พบผลตรวจนี้'); return }
         pid = v.patient_id
         setVisit(v); setAiDraft(v.ai_draft)
-        setSections({ ...emptySections(), ...Object.fromEntries((sec || []).map((s) => [s.category, s.content])) })
+        const loaded = { ...emptySections(), ...Object.fromEntries((sec || []).map((s) => [s.category, s.content])) }
+        // ข้อมูลเก่าที่เก็บเป็นตาราง: แปลงเป็นข้อความให้แก้ต่อได้ (บันทึกครั้งหน้าจะเก็บเป็นข้อความ)
+        if (!loaded.problem_list && (pr || []).length) loaded.problem_list = problemsToText(pr)
+        if (!loaded.plan_text && (pl || []).length) loaded.plan_text = planToText(pl, pr || [])
+        setSections(loaded)
         setValues((f || []).map((x) => ({ ...x, _k: x.id, _manual: false, value_num: x.value_num ?? '', test_code: x.test_code || '' })))
-        setProblems((pr || []).map((x) => ({ ...x, category: x.category || '' })))
-        setPlan((pl || []).map((x) => ({ ...x, _k: x.id, problem_id: x.problem_id || '' })))
         if ((f || []).length) setShowValues(true)
       }
       const { data: p } = await supabase.from('patients').select('*').eq('id', pid).single()
@@ -80,14 +82,6 @@ export default function VisitEditor() {
   const setV = touch((k, val) => setVisit((v) => ({ ...v, [k]: val })))
   const setSection = touch((key, text) => setSections((s) => ({ ...s, [key]: text })))
   const updValue = touch((k, field, val) => setValues((rows) => rows.map((r) => (r._k === k ? { ...r, [field]: val } : r))))
-  const updProblem = touch((id, field, val) => setProblems((rows) => rows.map((r) => (r.id === id ? { ...r, [field]: val } : r))))
-  const updPlan = touch((k, field, val) => setPlan((rows) => rows.map((r) => (r._k === k ? { ...r, [field]: val } : r))))
-  const moveProblem = touch((i, d) => setProblems((rows) => {
-    const j = i + d
-    if (j < 0 || j >= rows.length) return rows
-    const c = [...rows];[c[i], c[j]] = [c[j], c[i]]
-    return c
-  }))
   const normalizeRow = (k) => setValues((rows) => rows.map((r) => {
     if (r._k !== k) return r
     const n = normalizeFinding(catalog, { ...r, test_code: '' }, sex)
@@ -105,12 +99,10 @@ export default function VisitEditor() {
         mode: 'extract', raw_note: visit.raw_note, patient_context: ctx,
         catalog_names: (catalog?.rows || []).map((r) => r.name),
       })
-      const newProblems = (out.problems || []).map((p) => ({ ...emptyProblem(), ...p, category: p.category || '' }))
-      const newPlan = (out.plan || []).map((p) => ({ ...emptyPlan(), ...p, problem_id: newProblems[p.problem_index]?.id || '', _k: uid() }))
       const newValues = (out.key_values || []).map((v) =>
-        normalizeFinding(catalog, { ...emptyValue(v.category), ...v, _manual: false, value_num: v.value_num ?? '', _k: uid() }, sex))
+        normalizeFinding(catalog, { ...emptyValue(okCategory(v.category)), ...v, category: okCategory(v.category), flag: okFlag(v.flag), _manual: false, value_num: v.value_num ?? '', _k: uid() }, sex))
       setSections({ ...emptySections(), ...(out.sections || {}) })
-      setProblems(newProblems); setPlan(newPlan); setValues(newValues)
+      setValues(newValues)
       setAiDraft(out); setDirty(true)
       if (newValues.length) setShowValues(true)
     } catch (e) {
@@ -125,13 +117,11 @@ export default function VisitEditor() {
       p_visit: { id: visitId || null, patient_id: patient.id, visit_date: visit.visit_date, package_name: visit.package_name,
         raw_note: visit.raw_note, doctor_note: visit.doctor_note, status, ai_draft: aiDraft },
       p_sections: SECTION_KEYS.map((k) => ({ category: k, content: sections[k] || '' })),
-      p_findings: values.map((f, i) => ({ category: f.category, subcategory: clean(f.subcategory), test_code: clean(f.test_code),
+      p_findings: values.map((f, i) => ({ category: okCategory(f.category), subcategory: clean(f.subcategory), test_code: clean(f.test_code),
         test_name: f.test_name, value_num: f.value_num === '' || isNaN(Number(f.value_num)) ? null : Number(f.value_num),
-        unit: clean(f.unit), ref_range: clean(f.ref_range), flag: f.flag, sort_order: i })),
-      p_problems: problems.map((p, i) => ({ id: p.id, title: p.title, detail: clean(p.detail), priority: p.priority,
-        category: clean(p.category), status: p.status, sort_order: i })),
-      p_plan: plan.map((p, i) => ({ problem_id: clean(p.problem_id), domain: p.domain, action: p.action,
-        target: clean(p.target), timeframe: clean(p.timeframe), sort_order: i })),
+        unit: clean(f.unit), ref_range: clean(f.ref_range), flag: okFlag(f.flag), sort_order: i })),
+      p_problems: [],   // ปัญหาและแผนเก็บเป็นข้อความใน p_sections แล้ว
+      p_plan: [],
     })
     setBusy(null)
     if (error) { setErr(error.message); return }
@@ -250,52 +240,18 @@ export default function VisitEditor() {
             )}
           </div>
 
-          <h3 className="sub">ปัญหาเรียงตามความสำคัญ</h3>
-          {problems.map((p, i) => (
-            <div key={p.id} className={`p-row prio-${p.priority}`}>
-              <div className="order">
-                <button className="btn-quiet" onClick={() => moveProblem(i, -1)} aria-label="เลื่อนขึ้น" disabled={i === 0}>▲</button>
-                <span>{i + 1}</span>
-                <button className="btn-quiet" onClick={() => moveProblem(i, 1)} aria-label="เลื่อนลง" disabled={i === problems.length - 1}>▼</button>
-              </div>
-              <div className="p-fields">
-                <input placeholder="ชื่อปัญหา เช่น Insulin resistance" value={p.title} onChange={(e) => updProblem(p.id, 'title', e.target.value)} />
-                <input placeholder="รายละเอียด / เหตุผล" value={p.detail || ''} onChange={(e) => updProblem(p.id, 'detail', e.target.value)} />
-                <div className="inline">
-                  <select value={p.priority} onChange={(e) => updProblem(p.id, 'priority', e.target.value)} aria-label="ความสำคัญ">
-                    {Object.entries(PRIORITIES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </select>
-                  <select value={p.category} onChange={(e) => updProblem(p.id, 'category', e.target.value)} aria-label="หมวด">
-                    <option value="">หลายหมวด</option>
-                    {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.name}</option>)}
-                  </select>
-                  <select value={p.status} onChange={(e) => updProblem(p.id, 'status', e.target.value)} aria-label="สถานะปัญหา">
-                    <option value="active">Active</option><option value="monitoring">Monitoring</option><option value="resolved">Resolved</option>
-                  </select>
-                  <button className="btn-quiet danger" onClick={touch(() => { setProblems((r) => r.filter((x) => x.id !== p.id)); setPlan((r) => r.map((x) => (x.problem_id === p.id ? { ...x, problem_id: '' } : x))) })}>ลบ</button>
-                </div>
-              </div>
-            </div>
+          {[PROBLEM_LIST, PLAN_TEXT].map((box) => (
+            <section key={box.key} className="text-box">
+              <h3 className="sub">{box.name} <span className="muted small">{box.hint}</span></h3>
+              <textarea
+                className="sec-text"
+                rows={Math.min(Math.max((sections[box.key] || '').split('\n').length + 1, 4), 16)}
+                placeholder={`ยังไม่มี${box.name}`}
+                value={sections[box.key] || ''}
+                onChange={(e) => setSection(box.key, e.target.value)}
+              />
+            </section>
           ))}
-          <button className="btn-add" onClick={touch(() => setProblems((r) => [...r, emptyProblem()]))}>เพิ่มปัญหา</button>
-
-          <h3 className="sub">Plan of management</h3>
-          {plan.map((x) => (
-            <div key={x._k} className="pl-row">
-              <select value={x.problem_id} onChange={(e) => updPlan(x._k, 'problem_id', e.target.value)} aria-label="สำหรับปัญหา">
-                <option value="">แผนทั่วไป</option>
-                {problems.map((p, i) => <option key={p.id} value={p.id}>{i + 1}. {p.title || 'ยังไม่ตั้งชื่อ'}</option>)}
-              </select>
-              <select value={x.domain} onChange={(e) => updPlan(x._k, 'domain', e.target.value)} aria-label="ด้าน">
-                {Object.entries(DOMAINS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-              <input className="w-action" placeholder="สิ่งที่ต้องทำ" value={x.action} onChange={(e) => updPlan(x._k, 'action', e.target.value)} />
-              <input placeholder="เป้าหมาย" value={x.target || ''} onChange={(e) => updPlan(x._k, 'target', e.target.value)} />
-              <input placeholder="ระยะเวลา" value={x.timeframe || ''} onChange={(e) => updPlan(x._k, 'timeframe', e.target.value)} />
-              <button className="btn-quiet danger" onClick={touch(() => setPlan((r) => r.filter((y) => y._k !== x._k)))}>ลบ</button>
-            </div>
-          ))}
-          <button className="btn-add" onClick={touch(() => setPlan((r) => [...r, emptyPlan()]))}>เพิ่มแผน</button>
         </section>
       </div>
     </div>

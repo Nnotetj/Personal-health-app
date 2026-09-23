@@ -1,22 +1,28 @@
 -- =====================================================================
 -- Migration 003 — 5 หมวดใหม่: Clinical, Functional, Biomarker, Imaging, Multi-omics
--- + ช่อง Integrated Profile (เก็บใน visit_sections เหมือนหมวดอื่น)
--- รันใน SQL Editor ครั้งเดียว (รันซ้ำได้ ไม่พัง)
+-- + ช่อง Integrated Profile   (หา type เองอัตโนมัติ รันซ้ำได้)
 -- =====================================================================
-
 do $$
+declare sch text;
 begin
-  -- 1) conventional -> biomarker  (ข้อมูลเก่าทุกตารางเปลี่ยนตามอัตโนมัติ)
-  if exists (select 1 from pg_enum e join pg_type t on t.oid = e.enumtypid
-             where t.typname = 'finding_category' and e.enumlabel = 'conventional') then
-    alter type public.finding_category rename value 'conventional' to 'biomarker';
+  select n.nspname into sch
+  from pg_type t join pg_namespace n on n.oid = t.typnamespace
+  where t.typname = 'finding_category' limit 1;
+
+  if sch is null then
+    raise exception 'ไม่พบ finding_category ในฐานข้อมูลนี้ ตรวจว่าเปิด SQL Editor ถูกโปรเจกต์ (ดู project ref ใน URL)';
   end if;
+
+  if exists (select 1 from pg_enum e join pg_type t on t.oid = e.enumtypid
+             join pg_namespace n on n.oid = t.typnamespace
+             where t.typname = 'finding_category' and n.nspname = sch and e.enumlabel = 'conventional') then
+    execute format('alter type %I.finding_category rename value %L to %L', sch, 'conventional', 'biomarker');
+  end if;
+  execute format('alter type %I.finding_category add value if not exists %L', sch, 'clinical');
+  execute format('alter type %I.finding_category add value if not exists %L', sch, 'integrated');
 end $$;
 
--- 2) หมวดใหม่
-alter type public.finding_category add value if not exists 'clinical';
--- 3) ใช้กับ visit_sections เท่านั้น (ไม่แสดงในตัวเลือกหมวดของค่าตัวเลข/ปัญหา)
-alter type public.finding_category add value if not exists 'integrated';
-
--- ตรวจผล: ควรได้ {biomarker,multiomic,functional,imaging,clinical,integrated}
-select enum_range(null::public.finding_category);
+-- ตรวจผล
+select n.nspname as schema, string_agg(e.enumlabel, ', ' order by e.enumsortorder) as values
+from pg_type t join pg_namespace n on n.oid = t.typnamespace join pg_enum e on e.enumtypid = t.oid
+where t.typname = 'finding_category' group by 1;
