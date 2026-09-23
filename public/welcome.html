@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Personal Health Profile — แพทย์เห็นภาพรวมครบ คนไข้อ่านเข้าใจ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ---------- tokens (ตรงกับแอปจริง) ---------- */
+:root{
+  --paper:#F3F6F8; --surface:#FFFFFF; --ink:#15283A; --ink-2:#4B5E70; --ink-3:#8496A6; --line:#D9E1E7;
+  --clinical:#B23A48; --functional:#1B8063; --biomarker:#2A69AC; --imaging:#AE681C; --omics:#7345AE;
+  --font:'IBM Plex Sans Thai',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --top:56px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:calc(var(--top) + 12px)}
+body{font-family:var(--font);color:var(--ink);background:var(--paper);line-height:1.65;font-size:17px;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--biomarker);outline-offset:3px;border-radius:4px}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+
+/* ---------- top bar + progress ---------- */
+#progress{position:fixed;top:0;left:0;right:0;height:3px;z-index:80;transform-origin:left;transform:scaleX(0);
+  background:linear-gradient(90deg,var(--clinical) 0 20%,var(--functional) 20% 40%,var(--biomarker) 40% 60%,var(--imaging) 60% 80%,var(--omics) 80%)}
+.top{position:fixed;inset:0 0 auto 0;height:var(--top);z-index:70;background:rgba(243,246,248,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .wrap{height:100%;display:flex;align-items:center;gap:18px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:700;font-size:15px;white-space:nowrap}
+.mark{display:flex;gap:3px;align-items:flex-end;height:20px}
+.mark i{width:4px;border-radius:2px;display:block}
+.mark i:nth-child(1){height:12px;background:var(--clinical)}
+.mark i:nth-child(2){height:18px;background:var(--functional)}
+.mark i:nth-child(3){height:20px;background:var(--biomarker)}
+.mark i:nth-child(4){height:15px;background:var(--imaging)}
+.mark i:nth-child(5){height:9px;background:var(--omics)}
+.chapter{margin-left:auto;font-size:14px;color:var(--ink-3);transition:opacity .25s}
+.btn{white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 16px var(--font);text-decoration:none;
+  padding:12px 22px;border-radius:10px;background:var(--ink);color:#fff;border:1px solid var(--ink);cursor:pointer;transition:background .2s,transform .2s}
+.btn:hover{background:#0c1a27;transform:translateY(-1px)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{background:var(--surface)}
+.btn.sm{padding:8px 16px;font-size:14px;border-radius:8px}
+@media(max-width:720px){.chapter{display:none}.top .btn.sm{margin-left:auto}}
+
+/* ---------- side rail ---------- */
+.rail{position:fixed;right:24px;top:50%;transform:translateY(-50%);z-index:60;display:flex;flex-direction:column;gap:22px}
+.rail a{display:flex;align-items:center;justify-content:flex-end;gap:10px;text-decoration:none;font-size:13px;color:var(--ink-3)}
+.rail a span{opacity:0;transform:translateX(6px);transition:.25s;white-space:nowrap}
+.rail a i{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--ink-3);background:var(--paper);transition:.25s;flex:none}
+.rail a:hover span,.rail a.on span{opacity:1;transform:none}
+.rail a.on{color:var(--ink)} .rail a.on i{background:var(--ink);border-color:var(--ink);transform:scale(1.2)}
+@media(max-width:1420px){.rail{display:none}}
+
+/* ---------- hero ---------- */
+.hero{min-height:100svh;padding:calc(var(--top) + 56px) 0 64px;display:flex;align-items:center}
+.hero .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center}
+.hero h1{font-size:clamp(36px,5.2vw,64px);line-height:1.18;font-weight:700;letter-spacing:-.01em}
+.nw{white-space:nowrap;display:inline-block}
+.hero h1 .to{display:block;color:var(--ink-3);font-weight:500;font-size:.6em;line-height:1.35;margin-top:10px}
+.lede{margin-top:24px;font-size:19px;color:var(--ink-2);max-width:34em}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:32px}
+.facts{display:flex;gap:28px;flex-wrap:wrap;margin-top:40px;font-size:15px;color:var(--ink-2)}
+.facts b{display:block;font-size:22px;color:var(--ink)}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 22px 18px;box-shadow:0 20px 50px -30px rgba(21,40,58,.35);position:relative}
+.note-h{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--ink-3);margin-bottom:12px;min-height:26px}
+.nrows{display:flex;flex-direction:column;gap:4px}
+.nrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 10px;border-radius:0 8px 8px 0;
+  border-left:3px solid var(--line);transition:border-color .5s,background .5s}
+.nrow code{font:400 14px/1.6 var(--mono);color:var(--ink)}
+.nrow .fl{display:none;font-size:14.5px;line-height:1.5;color:var(--ink)}
+.note.sorted .nrow .sh{display:none}
+.note.sorted .nrow .fl{display:block;animation:fadeIn .5s both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.nrow em{font-style:normal;font-size:12px;font-weight:600;color:var(--c);white-space:nowrap;opacity:0;transform:translateX(-6px);transition:opacity .4s,transform .4s}
+.note.sorted .nrow{border-left-color:var(--c);background:color-mix(in srgb,var(--c) 7%,#fff)}
+.note.sorted .nrow em{opacity:1;transform:none}
+.note.sorted .nrow:nth-child(2) em{transition-delay:.05s}.note.sorted .nrow:nth-child(3) em{transition-delay:.1s}
+.note.sorted .nrow:nth-child(4) em{transition-delay:.15s}.note.sorted .nrow:nth-child(5) em{transition-delay:.2s}
+.note.sorted .nrow:nth-child(6) em{transition-delay:.25s}.note.sorted .nrow:nth-child(7) em{transition-delay:.3s}
+.note.sorted .nrow:nth-child(8) em{transition-delay:.35s}
+.replay{font:500 13px var(--font);color:var(--ink-2);background:none;border:1px solid var(--line);border-radius:6px;padding:2px 10px;cursor:pointer;opacity:0;transition:opacity .3s}
+.note.sorted .replay{opacity:1}
+.replay:hover{background:var(--paper)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend span::before{content:'';width:9px;height:9px;border-radius:2px;background:var(--c)}
+@media(max-width:480px){.nrow code{font-size:12.5px}.nrow .fl{font-size:13px}.nrow em{font-size:11px}}
+.scroll-hint{display:inline-flex;align-items:center;gap:8px;margin-top:44px;font-size:14px;color:var(--ink-3);text-decoration:none}
+.scroll-hint svg{animation:nudge 1.8s ease-in-out infinite}
+@keyframes nudge{50%{transform:translateY(4px)}}
+@media(max-width:900px){.hero .wrap{grid-template-columns:1fr;gap:40px}}
+
+/* ---------- generic section ---------- */
+section.block{padding:120px 0}
+.kicker{font-size:15px;font-weight:600;color:var(--ink-3);margin-bottom:14px}
+h2{font-size:clamp(30px,3.8vw,46px);line-height:1.22;font-weight:700;letter-spacing:-.005em;max-width:18em}
+.intro-p{margin-top:18px;font-size:18px;color:var(--ink-2);max-width:36em}
+
+/* ---------- problem ---------- */
+.pains{margin-top:56px;display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--line)}
+.pain{padding:28px 28px 8px 0}
+.pain + .pain{padding-left:28px;border-left:1px solid var(--line)}
+.pain h3{font-size:21px;line-height:1.4;margin-bottom:10px}
+.pain p{color:var(--ink-2);font-size:16px}
+@media(max-width:820px){.pains{grid-template-columns:1fr}.pain + .pain{padding-left:0;border-left:0;border-top:1px solid var(--line)}}
+
+/* ---------- scrollytelling ---------- */
+.story{position:relative;display:grid;grid-template-columns:1.1fr .9fr;gap:64px;margin-top:64px}
+.stage-col{position:relative}
+.stage{position:sticky;top:calc(var(--top) + 40px);height:min(560px,calc(100svh - var(--top) - 80px));
+  background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 30px 60px -40px rgba(21,40,58,.4)}
+.scene{position:absolute;inset:0;padding:28px;opacity:0;transform:translateY(14px);transition:opacity .45s,transform .45s;pointer-events:none;display:flex;flex-direction:column}
+.stage[data-scene="1"] .s1,.stage[data-scene="2"] .s2,.stage[data-scene="3"] .s3,.stage[data-scene="4"] .s4{opacity:1;transform:none;pointer-events:auto}
+.scene-h{font-size:13px;color:var(--ink-3);margin-bottom:14px;display:flex;justify-content:space-between;gap:10px}
+.steps{padding:4vh 0 20vh}
+.step{min-height:78svh;display:flex;flex-direction:column;justify-content:center;opacity:.35;transition:opacity .35s}
+.step.on{opacity:1}
+.step .n{width:34px;height:34px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700;font-size:15px;margin-bottom:18px}
+.step h3{font-size:clamp(24px,2.6vw,32px);line-height:1.3;margin-bottom:12px}
+.step p{color:var(--ink-2);font-size:17px;max-width:28em}
+.step ul{margin:14px 0 0 1.1em;color:var(--ink-2);font-size:16px}
+.step li{margin-bottom:4px}
+
+/* scene 1: typed note */
+.s1 pre{font:400 14.5px/2 var(--mono);white-space:pre-wrap;flex:1}
+.s1 pre span{display:block;opacity:0;transform:translateX(-6px);transition:opacity .3s,transform .3s}
+.stage[data-scene="1"] .s1 pre span{opacity:1;transform:none}
+.s1 pre span:nth-child(2){transition-delay:.12s}.s1 pre span:nth-child(3){transition-delay:.24s}.s1 pre span:nth-child(4){transition-delay:.36s}
+.s1 pre span:nth-child(5){transition-delay:.48s}.s1 pre span:nth-child(6){transition-delay:.6s}.s1 pre span:nth-child(7){transition-delay:.72s}
+.s1 pre span:nth-child(8){transition-delay:.84s}
+.fake-btn{align-self:flex-start;margin-top:10px;background:var(--ink);color:#fff;border-radius:8px;padding:9px 16px;font-size:14px;font-weight:600}
+.caret{display:inline-block;width:8px;height:1.1em;background:var(--ink);vertical-align:-3px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* scene 2: five lanes */
+.lanes{display:flex;flex-direction:column;gap:9px;flex:1}
+.lane{border-left:4px solid var(--c);background:color-mix(in srgb,var(--c) 6%,#fff);border-radius:0 10px 10px 0;padding:9px 12px;
+  opacity:0;transform:translateX(18px);transition:opacity .4s,transform .4s}
+.stage[data-scene="2"] .lane{opacity:1;transform:none}
+.lane:nth-child(2){transition-delay:.1s}.lane:nth-child(3){transition-delay:.2s}.lane:nth-child(4){transition-delay:.3s}.lane:nth-child(5){transition-delay:.4s}
+.lane b{font-size:14px;color:var(--c)}
+.lane p{font-size:14px;color:var(--ink);line-height:1.5}
+.lane small{color:var(--ink-3)}
+
+/* scene 3: review */
+.box{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px;line-height:1.7;margin-bottom:12px}
+.box-t{font-weight:600;font-size:14px;margin-bottom:6px}
+.box .pl{color:var(--ink-2);padding-left:1em}
+.row{display:flex;gap:8px;margin-top:auto}
+.chip-btn{font-size:13px;font-weight:600;border-radius:8px;padding:8px 14px;border:1px solid var(--line)}
+.chip-btn.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* scene 4: A4 */
+.a4-wrap{flex:1;display:grid;place-items:center}
+.a4{width:min(100%,330px);aspect-ratio:210/297;background:#fff;border:1px solid var(--line);border-radius:6px;padding:20px 20px 14px;
+  box-shadow:0 18px 40px -24px rgba(21,40,58,.45);font-size:10.5px;line-height:1.55;display:flex;flex-direction:column;gap:7px;overflow:hidden}
+.a4 .t{font-size:15px;font-weight:700;line-height:1.3;border-bottom:1.5px solid var(--ink);padding-bottom:6px}
+.a4 .th{font-weight:700;font-size:11.5px}
+.a4 .th i{font-style:normal;color:var(--biomarker)}
+.a4 .pl{background:#EEF2F5;border-radius:4px;padding:4px 7px}
+.a4 .pl ul{margin-left:1.1em}
+.a4 .g{border-top:1.5px solid var(--ink);padding-top:6px;margin-top:auto}
+.lang{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:12px}
+.lang span{padding:3px 10px}
+.lang span.on{background:var(--ink);color:#fff}
+[data-l="en"]{display:none}
+.a4.en [data-l="th"]{display:none}.a4.en [data-l="en"]{display:revert}
+
+@media(max-width:900px){
+  .story{display:block;margin-top:40px}
+  .stage-col{position:sticky;top:var(--top);z-index:2;background:var(--paper);padding:10px 0 12px}
+  .stage{position:relative;top:auto;height:50svh}
+  .scene{padding:18px}
+  .steps{padding-top:0}
+  .step{min-height:64svh;padding-top:20px}
+  .a4{width:min(100%,230px)}
+  .lanes{gap:6px}.lane{padding:6px 10px}.lane b{font-size:12.5px}.lane p{font-size:12.5px;line-height:1.45}.lane small{display:none}
+  .s1 pre{font-size:12.5px;line-height:1.8}.box{font-size:12.5px;padding:9px 11px;margin-bottom:8px}
+}
+
+/* ---------- five categories ---------- */
+.spectrum{margin-top:56px;display:grid;grid-template-columns:repeat(5,1fr);border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}
+.cat{padding:26px 22px 28px;border-top:6px solid var(--c)}
+.cat + .cat{border-left:1px solid var(--line)}
+.cat h3{font-size:20px;color:var(--c);margin-bottom:4px}
+.cat .th{font-size:14px;color:var(--ink-3);margin-bottom:14px}
+.cat p{font-size:15px;color:var(--ink-2)}
+.layers{margin-top:14px;display:flex;flex-wrap:wrap;gap:6px}
+.layers span{font-size:12.5px;border:1px solid color-mix(in srgb,var(--omics) 40%,#fff);color:var(--omics);border-radius:20px;padding:2px 9px}
+.mece{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:900px}
+.mece div{border-left:3px solid var(--ink);padding:4px 0 4px 16px}
+.mece b{display:block;font-size:17px}
+.mece span{color:var(--ink-2);font-size:15px}
+@media(max-width:980px){.spectrum{grid-template-columns:1fr 1fr}.cat + .cat{border-left:0}.cat{border-bottom:1px solid var(--line)}.cat:last-child{grid-column:1/-1}}
+@media(max-width:560px){.spectrum,.mece{grid-template-columns:1fr}}
+
+/* ---------- outcomes ---------- */
+.out{margin-top:56px;display:grid;grid-template-columns:1.2fr 1fr;gap:28px}
+.out-main{background:var(--ink);color:#fff;border-radius:18px;padding:34px}
+.out-main h3{font-size:26px;line-height:1.35;margin-bottom:12px}
+.out-main p{color:#C9D4DE}
+.spark{margin-top:26px}
+.spark svg{width:100%;height:auto;display:block}
+.spark small{color:#9FB0BF;font-size:13px}
+.out-list{display:flex;flex-direction:column;gap:0}
+.out-list div{padding:22px 0;border-bottom:1px solid var(--line)}
+.out-list div:first-child{padding-top:4px}
+.out-list b{display:block;font-size:19px;margin-bottom:4px}
+.out-list span{color:var(--ink-2);font-size:16px}
+@media(max-width:860px){.out{grid-template-columns:1fr}}
+
+/* ---------- safety ---------- */
+.flow{margin-top:56px;display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.flow div{flex:1 1 200px;padding:22px 24px;background:var(--surface);border:1px solid var(--line)}
+.flow div:first-child{border-radius:14px 0 0 14px}
+.flow div:last-child{border-radius:0 14px 14px 0;background:#EAF4EF;border-color:#BFDCCD}
+.flow div + div{border-left:0}
+.flow b{display:block;font-size:17px;margin-bottom:4px}
+.flow span{font-size:15px;color:var(--ink-2)}
+.rules{margin-top:36px;display:grid;grid-template-columns:repeat(2,1fr);gap:18px 40px;max-width:980px;list-style:none}
+.rules li{padding-left:30px;position:relative;font-size:16px;color:var(--ink-2)}
+.rules li b{color:var(--ink)}
+.rules li::before{content:'';position:absolute;left:0;top:6px;width:16px;height:16px;border-radius:50%;background:var(--functional);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8'/%3E%3C/svg%3E");}
+.rules li::after{content:'';position:absolute;left:5px;top:9px;width:6px;height:4px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg)}
+@media(max-width:760px){.flow div{flex-basis:100%;border-radius:0!important;border-left:1px solid var(--line)!important}.flow div:first-child{border-radius:14px 14px 0 0!important}.flow div:last-child{border-radius:0 0 14px 14px!important}.flow div + div{border-top:0}.rules{grid-template-columns:1fr}}
+
+
+/* ---------- two pillars ---------- */
+.pillars{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:28px;max-width:560px}
+.pillar{text-decoration:none;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:0 12px 12px 0;padding:14px 16px;transition:transform .2s,border-color .2s}
+.pillar:hover{transform:translateY(-2px)}
+.pillar b{display:block;font-size:18px;color:var(--c)}
+.pillar span{font-size:14.5px;color:var(--ink-2);line-height:1.5}
+.hero .cta{margin-top:24px}
+@media(max-width:520px){.pillars{grid-template-columns:1fr}}
+
+section.block.alt{background:#EAF2EE}
+.contrast{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:0;max-width:900px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.contrast div{padding:18px 22px;font-size:16.5px;color:var(--ink-2)}
+.contrast small{display:block;font-size:13px;font-weight:600;color:var(--ink-3);margin-bottom:4px}
+.contrast .now{color:var(--ink);background:color-mix(in srgb,var(--biomarker) 7%,#fff);border-left:1px solid var(--line)}
+.contrast .now small{color:var(--biomarker)}
+.contrast .now.g{background:color-mix(in srgb,var(--functional) 8%,#fff)}
+.contrast .now.g small{color:var(--functional)}
+@media(max-width:720px){.contrast{grid-template-columns:1fr}.contrast .now{border-left:0;border-top:1px solid var(--line)}}
+
+/* doctor mock */
+.pmock{margin-top:44px;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:0 30px 60px -40px rgba(21,40,58,.4);overflow:hidden}
+.pm-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 22px;border-bottom:1px solid var(--line)}
+.pm-head b{font-size:18px;margin-right:10px}
+.pm-head span{font-size:14px;color:var(--ink-3)}
+.visits{display:flex;gap:6px}
+.visits span{font-size:13px;border:1px solid var(--line);border-radius:20px;padding:3px 12px;color:var(--ink-2)}
+.visits span.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.pm-body{display:grid;grid-template-columns:1.35fr 1fr;gap:0}
+.pm-cats{padding:18px 22px;display:flex;flex-direction:column;gap:12px}
+.pc{border-left:4px solid var(--c);padding:2px 0 2px 12px}
+.pc b{color:var(--c);font-size:15px}
+.pc p{font-size:14px;line-height:1.55;color:var(--ink)}
+.pc p::before{content:'- ';color:var(--ink-3)}
+.pc p.sum{color:var(--ink-2);font-style:italic}
+.pc p.sum::before{content:''}
+.pc .layers{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
+.pc .layers span{font-size:11.5px;border:1px solid color-mix(in srgb,var(--omics) 35%,#fff);color:color-mix(in srgb,var(--omics) 55%,#fff);border-radius:20px;padding:1px 8px}
+.pc .layers span.on{color:#fff;background:var(--omics);border-color:var(--omics)}
+.pm-side{border-left:1px solid var(--line);background:#F8FAFB;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.ps{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.ps > b{display:block;font-size:14.5px;margin-bottom:6px}
+.ps ol{margin-left:1.2em;font-size:14px}
+.ps li{margin-bottom:4px}
+.ps li span{margin-right:6px}
+.ps li i{font-style:normal;font-size:11.5px;font-weight:600;border-radius:4px;padding:0 6px;background:#FFF1DB;color:#9A5A00;white-space:nowrap}
+.ps li i.hi{background:#FBE3E6;color:var(--clinical)}
+.pg{font-size:13.5px;font-weight:600;margin-bottom:6px}
+.pg p{font-weight:400;color:var(--ink-2);padding-left:.9em}
+.pg p::before{content:'- '}
+.trend svg{width:100%;height:auto;display:block}
+@media(max-width:920px){.pm-body{grid-template-columns:1fr}.pm-side{border-left:0;border-top:1px solid var(--line)}}
+
+.gains{margin-top:36px;display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.gains b{display:block;font-size:18px;margin-bottom:4px}
+.gains span{font-size:15.5px;color:var(--ink-2)}
+@media(max-width:820px){.gains{grid-template-columns:1fr;gap:18px}}
+
+/* patient */
+.pt-grid{margin-top:44px;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.translate{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:28px}
+.translate div{padding:14px 18px;font-size:16px}
+.translate div:first-child{font-family:var(--mono);font-size:14px;color:var(--ink-2);border-bottom:1px dashed var(--line)}
+.translate small{display:block;font-family:var(--font);font-size:12.5px;font-weight:600;color:var(--ink-3);margin-bottom:2px}
+.translate div:last-child small{color:var(--functional)}
+.ticks{list-style:none;display:flex;flex-direction:column;gap:14px}
+.ticks li{position:relative;padding-left:30px;color:var(--ink-2);font-size:16px}
+.ticks li b{color:var(--ink)}
+.ticks li::before{content:'';position:absolute;left:0;top:5px;width:18px;height:18px;border-radius:50%;background:var(--functional)}
+.ticks li::after{content:'';position:absolute;left:6px;top:9px;width:6px;height:4px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg)}
+.pt-sheet{position:sticky;top:calc(var(--top) + 24px)}
+.lang-toggle{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:12px;background:var(--surface)}
+.lang-toggle button{font:500 14px var(--font);padding:6px 16px;border:0;background:none;cursor:pointer;color:var(--ink-2)}
+.lang-toggle button.on{background:var(--ink);color:#fff}
+.sheet-mock{background:#fff;border:1px solid var(--line);border-radius:8px;padding:26px 28px;box-shadow:0 30px 60px -40px rgba(21,40,58,.45);font-size:14px;line-height:1.6}
+.sheet-mock header{border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:10px}
+.sheet-mock header small{color:var(--ink-3);font-size:12px}
+.sheet-mock h3{font-size:20px;line-height:1.3}
+.sheet-mock h4{font-size:15px;margin:12px 0 2px;display:flex;gap:6px}
+.sheet-mock h4 i{font-style:normal;color:var(--biomarker)}
+.sheet-mock .plan{background:#EEF2F5;border-radius:6px;padding:6px 10px;margin-top:6px}
+.sheet-mock ul{margin-left:1.2em}
+.sheet-mock em{font-style:normal;color:var(--ink-2)}
+.sheet-mock .goals{border-top:2px solid var(--ink);margin-top:14px;padding-top:8px}
+.sheet-mock [data-l="en"]{display:none}
+.sheet-mock.en [data-l="th"]{display:none}
+.sheet-mock.en [data-l="en"]{display:revert}
+@media(max-width:900px){.pt-grid{grid-template-columns:1fr;gap:32px}.pt-sheet{position:static}.sheet-mock{padding:20px}}
+
+/* ---------- final cta ---------- */
+.final{padding:120px 0 90px;text-align:center}
+.final h2{margin:0 auto}
+.final .intro-p{margin:18px auto 0}
+.final .cta{justify-content:center}
+.final small{display:block;margin-top:16px;color:var(--ink-3);font-size:14px}
+footer{border-top:1px solid var(--line);padding:26px 0 calc(26px + env(safe-area-inset-bottom));font-size:13px;color:var(--ink-3)}
+footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none!important;animation:none!important}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+<div id="progress" aria-hidden="true"></div>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#hero"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>Personal Health Profile</a>
+    <span class="chapter" id="chapter">เริ่มต้น</span>
+    <a class="btn sm" href="/login">เข้าสู่ระบบ</a>
+  </div>
+</header>
+
+<nav class="rail" aria-label="สารบัญ">
+  <a href="#hero" data-for="hero"><span>เริ่มต้น</span><i></i></a>
+  <a href="#doctor" data-for="doctor"><span>สำหรับแพทย์</span><i></i></a>
+  <a href="#patient" data-for="patient"><span>สำหรับคนไข้</span><i></i></a>
+  <a href="#how" data-for="how"><span>ทำงานอย่างไร</span><i></i></a>
+  <a href="#safety" data-for="safety"><span>ความปลอดภัย</span><i></i></a>
+  <a href="#start" data-for="start"><span>เริ่มใช้งาน</span><i></i></a>
+</nav>
+
+<main>
+<!-- ============ HERO ============ -->
+<section class="hero" id="hero" data-title="เริ่มต้น">
+  <div class="wrap">
+    <div>
+      <h1>Personal Health Profile<span class="to">สำหรับแพทย์และคนไข้</span></h1>
+      <p class="lede">รวมข้อมูลสุขภาพครบ 5 ด้าน: ผลตรวจเลือดและข้อมูลทางคลินิก · สมรรถภาพร่างกาย · ภาพถ่ายทางการแพทย์ · ข้อมูลระดับโมเลกุล ไว้ใน Platform เดียว แพทย์ใช้มองแนวโน้ม ระบุความเสี่ยง และวางแผนดูแลตามลำดับความสำคัญ ส่วนคนไข้เห็นภาพรวมสุขภาพและขั้นตอนดูแลต่อไปในภาษาที่เข้าใจง่าย</p>
+      <div class="pillars">
+        <a class="pillar" href="#doctor" style="--c:var(--biomarker)"><b>สำหรับแพทย์</b><span>ประวัติคนไข้แบ่ง 5 หมวด ปัญหาเรียงลำดับพร้อมแผน</span></a>
+        <a class="pillar" href="#patient" style="--c:var(--functional)"><b>สำหรับคนไข้</b><span>สรุป 1 หน้า ภาษาเข้าใจง่าย ทั้งไทยและอังกฤษ</span></a>
+      </div>
+      <div class="cta">
+        <a class="btn" href="/login">เข้าสู่ระบบ</a>
+        <a class="btn ghost" href="#how">ดูวิธีทำงาน</a>
+      </div>
+      <a class="scroll-hint" href="#doctor">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v11m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        เลื่อนลงเพื่อดูทั้งสองมุมมอง
+      </a>
+    </div>
+
+    <figure class="note" id="note" aria-label="ตัวอย่าง: โน้ตย่อของแพทย์ถูกจัดเข้า 5 หมวดอัตโนมัติ">
+      <div class="note-h"><span id="noteState">โน้ตย่อ ตามที่แพทย์จด</span><button type="button" class="replay" id="replay">ดูอีกครั้ง</button></div>
+      <div class="nrows" id="nrows">
+        <div class="nrow" data-o="3" style="--c:var(--biomarker)"><code class="sh">LDL 119, HDL 48, sdLDL 23, CRP 1.6</code><span class="fl">LDL-C 119, HDL-C 48, small dense LDL 23, CRP 1.6</span><em>Biomarker</em></div>
+        <div class="nrow" data-o="0" style="--c:var(--clinical)"><code class="sh">u/d = DLP, GERD | smk 20 cigs/d</code><span class="fl">Underlying disease: dyslipidemia, GERD; smoker 20 cigarettes/day</span><em>Clinical</em></div>
+        <div class="nrow" data-o="6" style="--c:var(--imaging)"><code class="sh">US: fatty liver, thyroid nodule TR4</code><span class="fl">Ultrasound: fatty liver; thyroid nodule TI&#8209;RADS&nbsp;4</span><em>Imaging</em></div>
+        <div class="nrow" data-o="1" style="--c:var(--functional)"><code class="sh">BODY: BMI 26, visc fat 2+, BF 32%</code><span class="fl">Body composition: BMI 26, visceral fat 2+, body fat 32%</span><em>Functional</em></div>
+        <div class="nrow" data-o="7" style="--c:var(--omics)"><code class="sh">Bio age 43.3 (CA 49.8), pace 0.8</code><span class="fl">Biological age 43.3 vs chronological age 49.8; pace of aging 0.8</span><em>Multi-omics</em></div>
+        <div class="nrow" data-o="4" style="--c:var(--biomarker)"><code class="sh">Vit D 30, TMAO high</code><span class="fl">Vitamin D 30, TMAO high</span><em>Biomarker</em></div>
+        <div class="nrow" data-o="2" style="--c:var(--functional)"><code class="sh">Fit age 50.6 | lo grip, nl VO2 max</code><span class="fl">Fitness age 50.6; low grip strength, normal VO₂max</span><em>Functional</em></div>
+        <div class="nrow" data-o="5" style="--c:var(--imaging)"><code class="sh">cimt 0.9, plaque | CAC 0, echo nl</code><span class="fl">Carotid IMT 0.9 mm with plaque; CAC score 0; echocardiogram normal</span><em>Imaging</em></div>
+      </div>
+      <div class="legend" aria-hidden="true"><span style="--c:var(--clinical)">Clinical</span><span style="--c:var(--functional)">Functional</span><span style="--c:var(--biomarker)">Biomarker</span><span style="--c:var(--imaging)">Imaging</span><span style="--c:var(--omics)">Multi-omics</span></div>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ FOR DOCTORS ============ -->
+<section class="block" id="doctor" data-title="สำหรับแพทย์">
+  <div class="wrap">
+    <p class="kicker" style="color:var(--biomarker)">สำหรับแพทย์</p>
+    <h2>เปิดประวัติคนไข้และข้อมูลสุขภาพทั้ง 5 ด้าน <span class="nw">เห็นภาพรวม</span><span class="nw">ในหน้าเดียว</span></h2>
+    <div class="contrast">
+      <div><small>เดิม</small>รายงานหลายสิบหน้าจากหลายแล็บ ต้องเปิดสลับไปมาเพื่อต่อภาพให้ครบ</div>
+      <div class="now"><small>ตอนนี้</small>ทุกผลตรวจอยู่ใน 5 หมวดเดิมทุกครั้ง ปัญหาเรียงจากสำคัญที่สุด และแต่ละปัญหามีแผนกำกับ</div>
+    </div>
+
+    <div class="pmock" aria-label="ตัวอย่างหน้าประวัติคนไข้สำหรับแพทย์">
+      <div class="pm-head">
+        <div><b>คุณ ก.</b><span>ชาย อายุ 49 ปี</span></div>
+        <div class="visits" aria-label="ประวัติการตรวจ"><span class="on">ก.ย. 2569</span><span>ส.ค. 2568</span><span>ก.ค. 2567</span></div>
+      </div>
+      <div class="pm-body">
+        <div class="pm-cats">
+          <div class="pc" style="--c:var(--clinical)"><b>Clinical</b><p>Dyslipidemia, MDD with anxiety, GERD; rosuvastatin 10 mg</p><p>Smoker 20 cigarettes/day, stress 8/10</p><p class="sum">สรุป: Treated dyslipidemia with major smoking risk.</p></div>
+          <div class="pc" style="--c:var(--functional)"><b>Functional</b><p>BMI 26, body fat 32%, visceral fat 2+, low lean mass</p><p>Fitness age 50.6; low grip strength, normal VO₂max</p><p class="sum">สรุป: High adiposity with low muscle reserve.</p></div>
+          <div class="pc" style="--c:var(--biomarker)"><b>Biomarker</b><p>LDL-C 119, HDL-C 48, small dense LDL 23, CRP 1.6, TMAO high</p><p>High free T4 with TSH 3</p><p class="sum">สรุป: Residual lipid risk, discordant thyroid pattern.</p></div>
+          <div class="pc" style="--c:var(--imaging)"><b>Imaging</b><p>Carotid IMT 0.9 mm with plaque; CAC score 0; echocardiogram normal</p><p>Fatty liver; thyroid nodule 0.6 cm TI&#8209;RADS&nbsp;4</p><p class="sum">สรุป: Early subclinical atherosclerosis.</p></div>
+          <div class="pc" style="--c:var(--omics)"><b>Multi-omics</b><p>Epigenome: biological age 43.3 vs chronological age 49.8; pace of aging 0.8</p><p>Metabolome: reduced TCA cycle activity</p>
+            <div class="layers"><span>Genome</span><span class="on">Epigenome</span><span>Transcriptome</span><span>Proteome</span><span class="on">Metabolome</span><span>Microbiome</span></div></div>
+        </div>
+        <aside class="pm-side">
+          <div class="ps">
+            <b>ปัญหาเรียงตามความสำคัญ</b>
+            <ol>
+              <li><span>Vascular risk with carotid plaque</span><i class="hi">High</i></li>
+              <li><span>Heavy smoking, 20 cigarettes/day</span><i class="hi">High</i></li>
+              <li><span>Thyroid nodule TI&#8209;RADS&nbsp;4 with high free T4</span><i>Medium</i></li>
+              <li><span>High body fat with low muscle mass</span><i>Medium</i></li>
+            </ol>
+          </div>
+          <div class="ps">
+            <b>Plan of management</b>
+            <div class="pg">1. Vascular risk with carotid plaque<p>Referral: Cardiology review | LDL-C &lt;100 | 3 months</p><p>Follow-up test: Repeat CIMT | 12 months</p></div>
+            <div class="pg">2. Heavy smoking<p>Smoking cessation program | Start now</p></div>
+            <div class="pg">3. Thyroid nodule<p>Follow-up test: Thyroid ultrasound, TSH, free T4 | 6 months</p></div>
+          </div>
+          <div class="ps trend">
+            <b>แนวโน้ม LDL-C</b>
+            <svg viewBox="0 0 240 70" role="img" aria-label="LDL-C ลดลงจาก 172 เป็น 119 ใน 3 ปี">
+              <line x1="0" y1="40" x2="240" y2="40" stroke="#D9E1E7" stroke-dasharray="3 4"/>
+              <polyline points="14,12 120,28 226,52" fill="none" stroke="#2A69AC" stroke-width="2.5" stroke-linecap="round"/>
+              <g fill="#fff" stroke="#2A69AC" stroke-width="2.5"><circle cx="14" cy="12" r="4"/><circle cx="120" cy="28" r="4"/><circle cx="226" cy="52" r="4.5" fill="#2A69AC"/></g>
+              <g font-size="10" fill="#8496A6" font-family="IBM Plex Sans Thai, sans-serif"><text x="2" y="67">2567: 172</text><text x="100" y="67">2568: 141</text><text x="190" y="67">2569: 119</text></g>
+            </svg>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div class="gains">
+      <div><b>ข้อมูลอยู่ที่เดิมทุกครั้ง</b><span>5 หมวดเดียวกันทุกคนไข้ แต่ละผลตรวจอยู่ในหมวดเดียว ไม่ซ้ำและไม่ตกหล่น หาข้อมูลได้ทันที</span></div>
+      <div><b>เรื่องสำคัญมาก่อน</b><span>ปัญหาเรียงตามความสำคัญเพื่อการป้องกัน และแผนจัดกลุ่มใต้ปัญหาแต่ละข้อ</span></div>
+      <div><b>ดูย้อนหลังได้ทุกครั้งที่ตรวจ</b><span>สลับดูแต่ละครั้งที่ตรวจ และค่าตัวเลขสำคัญต่อเป็นกราฟแนวโน้มให้อัตโนมัติ</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOR PATIENTS ============ -->
+<section class="block alt" id="patient" data-title="สำหรับคนไข้">
+  <div class="wrap">
+    <p class="kicker" style="color:var(--functional)">สำหรับคนไข้</p>
+    <h2>คนไข้ได้สรุป 1 หน้า ที่อ่านจบแล้วรู้ว่าต้องทำอะไร</h2>
+    <div class="contrast">
+      <div><small>เดิม</small>เอกสารเต็มไปด้วยศัพท์แพทย์ คนไข้จำได้แค่ "ค่าสูง" หรือ "ค่าต่ำ" แต่มองภาพรวมไม่ออก และไม่รู้ว่าปัญหาไหนสำคัญ</div>
+      <div class="now g"><small>ตอนนี้</small>สรุปด้วยภาษาที่เข้าใจง่าย เห็นภาพรวมสุขภาพในหน้าเดียว เรียงปัญหาสำคัญก่อน และแต่ละเรื่องบอกว่า<span class="nw">ต้องทำอะไร</span> <span class="nw">เมื่อไหร่</span></div>
+    </div>
+
+    <div class="pt-grid">
+      <div class="pt-points">
+        <div class="translate" aria-label="ตัวอย่างการเปลี่ยนศัพท์แพทย์เป็นภาษาที่คนไข้เข้าใจ">
+          <div><small>ที่แพทย์อ่าน</small>Carotid IMT 0.9 mm with plaque; CAC score 0</div>
+          <div><small>ที่คนไข้อ่าน</small>พบคราบไขมันเริ่มเกาะที่หลอดเลือดคอ แต่ยังไม่พบหินปูนในหลอดเลือดหัวใจ</div>
+        </div>
+        <ul class="ticks">
+          <li><b>ไม่ใช้ศัพท์แพทย์</b> อธิบายด้วยคำที่คนทั่วไปเข้าใจ แต่คงใจความและตัวเลขสำคัญไว้</li>
+          <li><b>เรื่องสำคัญที่สุดมาก่อน</b> จัดเป็น 4–5 หัวข้อ ไม่ซ้ำกัน</li>
+          <li><b>ทุกเรื่องมีแผน</b> บอกว่าทำอะไร และเมื่อไหร่ ทีละบรรทัด</li>
+          <li><b>นัดตรวจซ้ำรวมไว้ที่เดียว</b> เรียงจากเร็วไปช้า</li>
+          <li><b>ไทยและอังกฤษ</b> ใจความตรงกัน ไม่เกิน 500 คำ พิมพ์พอดี A4</li>
+        </ul>
+      </div>
+
+      <div class="pt-sheet">
+        <div class="lang-toggle" role="group" aria-label="เลือกภาษา">
+          <button type="button" class="on" data-set="th">ไทย</button><button type="button" data-set="en">English</button>
+        </div>
+        <article class="sheet-mock" id="sheet">
+          <header><small>Wellness clinic</small><h3><span data-l="th">โปรไฟล์สุขภาพเฉพาะตัวของคุณ</span><span data-l="en">My Personalized Health Profile</span></h3></header>
+          <p data-l="th">ผลตรวจครั้งนี้มีเรื่องน่ายินดีหลายอย่าง หัวใจบีบตัวดี ไม่พบหินปูนในหลอดเลือดหัวใจ และอายุชีวภาพน้อยกว่าอายุจริง แต่มีบางเรื่องที่ควรดูแลก่อน</p>
+          <p data-l="en">There is good news: your heart pumps normally, no calcium was found in the heart arteries, and your biological age is younger than your real age. A few areas need attention first.</p>
+          <h4><i>1.</i><span data-l="th">หัวใจและหลอดเลือด — สำคัญที่สุด</span><span data-l="en">Heart &amp; Blood Vessels — Highest Priority</span></h4>
+          <p data-l="th">พบคราบไขมันเริ่มเกาะที่หลอดเลือดคอ ร่วมกับการสูบบุหรี่วันละ 20 มวน ซึ่งเพิ่มความเสี่ยงหลอดเลือดอย่างชัดเจน</p>
+          <p data-l="en">Early plaque was found in your neck arteries. Smoking 20 cigarettes a day clearly raises your blood vessel risk.</p>
+          <div class="plan"><b data-l="th">แผน:</b><b data-l="en">Plan:</b><ul>
+            <li><span data-l="th">เลิกบุหรี่ร่วมกับคลินิก</span><span data-l="en">Stop smoking with clinic support</span> <em data-l="th">— เริ่มทันที</em><em data-l="en">— start now</em></li>
+            <li><span data-l="th">พบแพทย์หัวใจ</span><span data-l="en">See a heart specialist</span> <em data-l="th">— ภายใน 3 เดือน</em><em data-l="en">— within 3 months</em></li></ul></div>
+          <h4><i>2.</i><span data-l="th">น้ำหนักและกล้ามเนื้อ</span><span data-l="en">Weight &amp; Muscle</span></h4>
+          <p data-l="th">ไขมันในร่างกายประมาณ 32% ไขมันหน้าท้องสูง และกล้ามเนื้อน้อยกว่าที่ควร</p>
+          <p data-l="en">Body fat is about 32%, with extra belly fat and less muscle than ideal.</p>
+          <div class="plan"><b data-l="th">แผน:</b><b data-l="en">Plan:</b><ul>
+            <li><span data-l="th">ฝึกเวทสัปดาห์ละ 2–3 วัน</span><span data-l="en">Strength training 2–3 days a week</span> <em data-l="th">— 3–6 เดือน</em><em data-l="en">— 3–6 months</em></li></ul></div>
+          <div class="goals"><b data-l="th">ติดตามต่อเนื่อง</b><b data-l="en">Continue follow-up</b><ul>
+            <li><span data-l="th">ตรวจอัลตราซาวด์ไทรอยด์</span><span data-l="en">Thyroid ultrasound</span> <em data-l="th">— 6 เดือน</em><em data-l="en">— 6 months</em></li>
+            <li><span data-l="th">ตรวจหลอดเลือดคอซ้ำ</span><span data-l="en">Repeat neck artery scan</span> <em data-l="th">— 12 เดือน</em><em data-l="en">— 12 months</em></li></ul></div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW (scrollytelling) ============ -->
+<section class="block" id="how" data-title="ทำงานอย่างไร">
+  <div class="wrap">
+    <p class="kicker">ทำงานอย่างไร</p>
+    <h2>จากโน้ตย่อ ถึงทั้งสองมุมมอง ใน 4 ขั้น</h2>
+
+    <div class="story">
+      <div class="stage-col">
+        <div class="stage" id="stage" data-scene="1" aria-live="polite">
+          <!-- scene 1 -->
+          <div class="scene s1" aria-label="ขั้นที่ 1 วางโน้ต">
+            <div class="scene-h"><span>สรุป pertinent findings</span><span>ไม่ต้องใส่ชื่อหรือ HN</span></div>
+<pre><span>u/d = DLP, MDD c anxiety, GERD</span><span>current med = Rosuvastatin 10 mg, Nexium</span><span>BODY: ovwt 26, visc fat 2+, BF 32%</span><span>CVD: L 119, H 48, sd 23 | cimt 0.9, plaque</span><span>Thyroid: hi FT4, tsh 3, nodule 0.6 cm TR4</span><span>GI: fatty liver</span><span>Epigenetic: CA 49.8, bio age 43.3</span><span>OAT: TCA under-run, dysbiosis <i class="caret" aria-hidden="true"></i></span></pre>
+            <span class="fake-btn">ให้ AI ร่างและจัดหมวด</span>
+          </div>
+          <!-- scene 2 -->
+          <div class="scene s2" aria-label="ขั้นที่ 2 จัด 5 หมวด">
+            <div class="scene-h"><span>AI จัดเข้า 5 หมวด</span><span>ภาษาแพทย์ ให้หมอตรวจทาน</span></div>
+            <div class="lanes">
+              <div class="lane" style="--c:var(--clinical)"><b>Clinical</b><p>Dyslipidemia, MDD with anxiety, GERD; rosuvastatin 10 mg, esomeprazole</p></div>
+              <div class="lane" style="--c:var(--functional)"><b>Functional</b><p>BMI 26, body fat 32%, visceral fat 2+ <small>→ high adiposity</small></p></div>
+              <div class="lane" style="--c:var(--biomarker)"><b>Biomarker</b><p>LDL-C 119, HDL-C 48, small dense LDL 23; high free T4 with TSH 3</p></div>
+              <div class="lane" style="--c:var(--imaging)"><b>Imaging</b><p>CIMT 0.9 mm, carotid plaque; thyroid nodule 0.6 cm TI&#8209;RADS&nbsp;4; fatty liver</p></div>
+              <div class="lane" style="--c:var(--omics)"><b>Multi-omics</b><p>Epigenome: biological age 43.3 vs chronological age 49.8; Metabolome: reduced TCA cycle activity</p></div>
+            </div>
+          </div>
+          <!-- scene 3 -->
+          <div class="scene s3" aria-label="ขั้นที่ 3 ตรวจทาน">
+            <div class="scene-h"><span>ตรวจทานและแก้ไข</span><span>แก้ได้เหมือนแก้เอกสาร</span></div>
+            <div class="box">
+              <div class="box-t">ปัญหาเรียงตามความสำคัญ</div>
+              1. Vascular risk with carotid plaque (High)<br>
+              2. Heavy smoking, 20 cigarettes/day (High)<br>
+              3. Thyroid nodule TI&#8209;RADS&nbsp;4 with high free T4 (Medium)
+            </div>
+            <div class="box">
+              <div class="box-t">Plan of management</div>
+              1. Vascular risk with carotid plaque
+              <div class="pl">- Referral: Cardiology review | LDL-C &lt;100 | 3 months</div>
+              2. Heavy smoking, 20 cigarettes/day
+              <div class="pl">- Other: Smoking cessation program | Start now</div>
+            </div>
+            <div class="row"><span class="chip-btn">บันทึกร่าง</span><span class="chip-btn dark">บันทึกและยืนยัน</span></div>
+          </div>
+          <!-- scene 4 -->
+          <div class="scene s4" aria-label="ขั้นที่ 4 สรุปให้คนไข้">
+            <div class="scene-h"><span>หน้าสรุปสำหรับคนไข้</span><span class="lang" aria-hidden="true"><span class="on" id="lth">ไทย</span><span id="len">English</span></span></div>
+            <div class="a4-wrap">
+              <div class="a4" id="a4">
+                <div class="t"><span data-l="th">โปรไฟล์สุขภาพเฉพาะตัวของคุณ</span><span data-l="en">My Personalized Health Profile</span></div>
+                <div data-l="th">ผลตรวจมีเรื่องน่ายินดีหลายอย่าง หัวใจบีบตัวดีและไม่พบหินปูนในหลอดเลือดหัวใจ แต่มีบางเรื่องที่ควรดูแลก่อน</div>
+                <div data-l="en">Your heart pumps normally and no calcium was found in the heart arteries. A few areas need attention first.</div>
+                <div class="th"><i>1.</i> <span data-l="th">หัวใจและหลอดเลือด — สำคัญที่สุด</span><span data-l="en">Heart &amp; Blood Vessels — Highest Priority</span></div>
+                <div data-l="th">พบคราบไขมันเริ่มเกาะที่หลอดเลือดคอ ร่วมกับการสูบบุหรี่วันละ 20 มวน</div>
+                <div data-l="en">Early plaque in the neck arteries, together with smoking 20 cigarettes a day.</div>
+                <div class="pl"><b data-l="th">แผน:</b><b data-l="en">Plan:</b>
+                  <ul><li><span data-l="th">เลิกบุหรี่ร่วมกับคลินิก — เริ่มทันที</span><span data-l="en">Stop smoking with clinic support — start now</span></li>
+                  <li><span data-l="th">พบแพทย์หัวใจ — ภายใน 3 เดือน</span><span data-l="en">See a heart specialist — within 3 months</span></li></ul></div>
+                <div class="th"><i>2.</i> <span data-l="th">น้ำหนักและกล้ามเนื้อ</span><span data-l="en">Weight &amp; Muscle</span></div>
+                <div data-l="th">ไขมันในร่างกายประมาณ 32% และไขมันช่องท้องสูง</div>
+                <div data-l="en">Body fat is about 32%, with extra belly fat.</div>
+                <div class="th"><i>3.</i> <span data-l="th">ไทรอยด์</span><span data-l="en">Thyroid</span></div>
+                <div data-l="th">พบก้อนเล็ก ๆ ที่ต่อมไทรอยด์ ควรตรวจติดตามตามนัด</div>
+                <div data-l="en">A small lump was found in the thyroid and needs a follow-up scan.</div>
+                <div class="g"><b data-l="th">เป้าหมายสุขภาพหลักของคุณ</b><b data-l="en">Your Main Health Goals</b>
+                  <ul style="margin-left:1.1em"><li><span data-l="th">อันดับแรก: เลิกบุหรี่และปกป้องหลอดเลือด</span><span data-l="en">First: stop smoking and protect your arteries</span></li>
+                  <li><span data-l="th">อันดับสอง: ลดไขมันหน้าท้อง เพิ่มกล้ามเนื้อ</span><span data-l="en">Second: lose belly fat and build muscle</span></li></ul></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="steps">
+        <article class="step" data-scene="1">
+          <span class="n">1</span>
+          <h3>วางโน้ตย่อแบบที่เขียนอยู่แล้ว</h3>
+          <p>ไม่ต้องเปลี่ยนวิธีจด ใช้ตัวย่อ เครื่องหมาย หรือจัดกลุ่มตามระบบอวัยวะได้ตามถนัด แล้วกดปุ่มเดียวให้ AI ร่าง</p>
+          <ul><li>ไม่ต้องใส่ชื่อหรือ HN ระบบส่งเพียงเพศ อายุ และประวัติพื้นฐาน</li></ul>
+        </article>
+        <article class="step" data-scene="2">
+          <span class="n">2</span>
+          <h3>AI จัดเข้า 5 หมวด ขยายตัวย่อให้อ่านง่าย</h3>
+          <p>"CVD : L 119, cimt 0.9" จะถูกแยกไปตามชนิดการตรวจ ค่าเลือดไป Biomarker ภาพหลอดเลือดไป Imaging พร้อมบรรทัดสรุปท้ายทุกหมวด</p>
+          <ul><li>ใช้ตัวเลขตามที่หมอเขียนเท่านั้น ไม่เติมค่าที่ไม่มี</li><li>ดึงค่าตัวเลขสำคัญไว้ทำกราฟแนวโน้ม</li></ul>
+        </article>
+        <article class="step" data-scene="3">
+          <span class="n">3</span>
+          <h3>แพทย์ตรวจทาน เรียงปัญหา และวางแผน</h3>
+          <p>ทุกช่องเป็นข้อความที่แก้ได้อิสระ ปัญหาเรียงตามความสำคัญ และแผนจัดกลุ่มใต้ปัญหาแต่ละข้อ</p>
+          <ul><li>บันทึกเป็นร่างไว้ก่อน หรือยืนยันเมื่อพร้อม</li></ul>
+        </article>
+        <article class="step" data-scene="4">
+          <span class="n">4</span>
+          <h3>ได้สรุป 1 หน้าให้คนไข้ ทั้งไทยและอังกฤษ</h3>
+          <p>เขียนด้วยภาษาชาวบ้าน เรียงเรื่องสำคัญก่อน แต่ละเรื่องบอกว่าต้องทำอะไรและเมื่อไหร่ ไม่เกิน 500 คำ พิมพ์พอดี A4</p>
+          <ul><li>แปลฉบับอังกฤษที่หมอตรวจแล้วเป็นไทย ใจความตรงกันทุกข้อ</li></ul>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SAFETY ============ -->
+<section class="block" id="safety" data-title="ความปลอดภัย">
+  <div class="wrap">
+    <p class="kicker">ความปลอดภัย</p>
+    <h2>AI ร่าง แพทย์เป็นผู้ตัดสินใจ</h2>
+    <p class="intro-p">ทุกเอกสารที่ถึงมือคนไข้ ผ่านการตรวจทานโดยแพทย์ผู้ดูแลก่อนเสมอ</p>
+    <div class="flow" aria-label="ลำดับการทำงาน">
+      <div><b>แพทย์วางโน้ต</b><span>ข้อมูลไม่ระบุตัวตน</span></div>
+      <div><b>AI ร่าง</b><span>จัดหมวด เรียงปัญหา ร่างแผน</span></div>
+      <div><b>แพทย์ตรวจทาน</b><span>แก้ไข แล้วยืนยัน</span></div>
+      <div><b>ส่งถึงคนไข้</b><span>สรุป 1 หน้าที่หมอรับรองแล้ว</span></div>
+    </div>
+    <ul class="rules">
+      <li><b>ไม่ส่งชื่อหรือ HN ให้ AI</b> ระบบส่งเพียงเพศ อายุ และประวัติพื้นฐาน</li>
+      <li><b>ไม่เติมตัวเลขเอง</b> AI ใช้เฉพาะค่าที่อยู่ในโน้ตของแพทย์</li>
+      <li><b>ใช้ได้เฉพาะแพทย์ที่ได้รับอนุมัติ</b> ลงทะเบียนแล้วต้องรอผู้ดูแลระบบอนุมัติก่อน</li>
+      <li><b>ผลยีนบอกความเสี่ยง ไม่ใช่คำวินิจฉัย</b> สรุปคนไข้จะเขียนไว้ชัดเจนเสมอ</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ FINAL CTA ============ -->
+<section class="final" id="start" data-title="เริ่มใช้งาน">
+  <div class="wrap">
+    <h2>ผลตรวจชุดถัดไป ให้ทั้งแพทย์และคนไข้เห็นภาพเดียวกัน</h2>
+    <p class="intro-p">เข้าสู่ระบบด้วยบัญชีแพทย์ของคลินิก หรือลงทะเบียนแล้วรอผู้ดูแลระบบอนุมัติ</p>
+    <div class="cta">
+      <a class="btn" href="/login">เข้าสู่ระบบ</a>
+      <a class="btn ghost" href="/login?mode=signup">ลงทะเบียนแพทย์ใหม่</a>
+    </div>
+    <small>สำหรับแพทย์และบุคลากรของคลินิกเท่านั้น</small>
+  </div>
+</section>
+</main>
+
+<footer><div class="wrap"><span>Personal Health Profile · Wellness clinic</span><span>เอกสารที่สร้างจากระบบใช้ประกอบคำแนะนำของแพทย์</span></div></footer>
+
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  // progress bar
+  const bar = document.getElementById('progress')
+  const onScroll = () => {
+    const h = document.documentElement
+    const p = h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight)
+    bar.style.transform = `scaleX(${p})`
+  }
+  addEventListener('scroll', onScroll, { passive: true }); onScroll()
+
+  // chapter label + side rail
+  const label = document.getElementById('chapter')
+  const links = [...document.querySelectorAll('.rail a')]
+  const secObs = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return
+      label.textContent = e.target.dataset.title
+      links.forEach((a) => a.classList.toggle('on', a.dataset.for === e.target.id))
+    })
+  }, { rootMargin: '-45% 0px -50% 0px' })
+  document.querySelectorAll('main > section').forEach((s) => secObs.observe(s))
+
+  // hero: โน้ตที่ปนกัน -> เรียงเข้า 5 หมวด (FLIP animation)
+  const note = document.getElementById('note'), list = document.getElementById('nrows')
+  const state = document.getElementById('noteState'), replayBtn = document.getElementById('replay')
+  const mixed = [...list.children]
+  function sortRows() {
+    const rows = [...list.children]
+    const first = new Map(rows.map((r) => [r, r.getBoundingClientRect().top]))
+    rows.sort((a, b) => a.dataset.o - b.dataset.o).forEach((r) => list.appendChild(r))
+    note.classList.add('sorted')
+    if (!reduce) rows.forEach((r) => {
+      const dy = first.get(r) - r.getBoundingClientRect().top
+      r.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 700, easing: 'cubic-bezier(.2,.7,.2,1)' })
+    })
+    note.classList.add('sorted')
+    state.textContent = 'จัดเข้า 5 หมวด เขียนเป็นคำเต็ม'
+  }
+  function reset() {
+    note.classList.remove('sorted')
+    mixed.forEach((r) => list.appendChild(r))
+    state.textContent = 'โน้ตย่อ ตามที่แพทย์จด'
+  }
+  replayBtn.addEventListener('click', () => { reset(); setTimeout(sortRows, 900) })
+  setTimeout(sortRows, reduce ? 0 : 1400)
+
+  // scrollytelling: switch scene by active step
+  const stage = document.getElementById('stage')
+  const steps = [...document.querySelectorAll('.step')]
+  const stepObs = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return
+      steps.forEach((s) => s.classList.toggle('on', s === e.target))
+      stage.dataset.scene = e.target.dataset.scene
+    })
+  }, { rootMargin: matchMedia('(max-width: 900px)').matches ? '-68% 0px -22% 0px' : '-45% 0px -45% 0px' })
+  steps.forEach((s) => stepObs.observe(s))
+
+  // patient sheet: ไทย / English toggle
+  const sheet = document.getElementById('sheet')
+  document.querySelectorAll('.lang-toggle button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.lang-toggle button').forEach((x) => x.classList.toggle('on', x === b))
+    sheet.classList.toggle('en', b.dataset.set === 'en')
+  }))
+
+  // scene 4: switch ไทย / English every few seconds
+  const a4 = document.getElementById('a4'), lth = document.getElementById('lth'), len = document.getElementById('len')
+  if (!reduce) setInterval(() => {
+    if (stage.dataset.scene !== '4') return
+    const en = a4.classList.toggle('en')
+    lth.classList.toggle('on', !en); len.classList.toggle('on', en)
+  }, 2600)
+})()
+</script>
+</body>
+</html>
