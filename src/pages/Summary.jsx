@@ -50,11 +50,35 @@ export default function Summary() {
         problems: problems.map(({ id, title, detail, priority }) => ({ id, title, detail, priority })),
         plan: plan.map(({ problem_id, domain, action, target, timeframe }) => ({ problem_id, domain, action, target, timeframe })),
       }
-      setContent(await aiAssist({ mode: 'summary', language: lang, profile }))
+      setContent(toProfileShape(await aiAssist({ mode: 'summary', language: lang, profile }), lang))
       setAiUsed(true)
       setEdit(true)
       setMsg({ type: 'ok', text: 'AI ร่างแล้ว ตรวจทานและกดบันทึกก่อนพิมพ์' })
     } catch (e) { setMsg({ type: 'error', text: `AI สรุปไม่สำเร็จ: ${e.message}` }) } finally { setBusy(null) }
+  }
+
+  // ย่อขนาดตัวอักษรให้พอดี A4 1 หน้า ถ้าย่อสุดแล้วยังเกิน จะพิมพ์ต่อหน้า 2 (ไม่ตัดเนื้อหาทิ้ง)
+  function printFitted() {
+    const sheet = document.querySelector('.sheet')
+    if (!sheet) { window.print(); return }
+    const probe = document.createElement('div')
+    probe.style.cssText = 'position:absolute;visibility:hidden;height:297mm'
+    document.body.appendChild(probe)
+    const pageH = probe.getBoundingClientRect().height
+    probe.remove()
+    const before = { font: sheet.style.fontSize, min: sheet.style.minHeight }
+    sheet.style.minHeight = '0'
+    let fits = false
+    for (const pt of [10, 9.6, 9.2, 8.8, 8.5]) {
+      sheet.style.fontSize = `${pt}pt`
+      if (sheet.scrollHeight <= pageH) { fits = true; break }
+    }
+    sheet.style.minHeight = before.min
+    sheet.classList.toggle('fit-2pages', !fits)
+    if (!fits) setMsg({ type: 'error', text: 'เนื้อหายาวเกิน 1 หน้า จะพิมพ์เป็น 2 หน้า ลองลดข้อความให้ไม่เกิน 500 คำ' })
+    const restore = () => { sheet.style.fontSize = before.font; sheet.classList.remove('fit-2pages'); window.removeEventListener('afterprint', restore) }
+    window.addEventListener('afterprint', restore)
+    window.print()
   }
 
   // แปลฉบับอังกฤษที่บันทึกแล้ว เป็นภาษาไทยที่คนไข้อ่านเข้าใจง่าย
@@ -63,7 +87,7 @@ export default function Summary() {
     if (!source) return
     setBusy('tr'); setMsg(null)
     try {
-      setContent(await aiAssist({ mode: 'translate', content: source }))
+      setContent(toProfileShape(await aiAssist({ mode: 'translate', content: source }), 'th'))
       setAiUsed(true)
       setEdit(true)
       setMsg({ type: 'ok', text: 'แปลแล้ว ตรวจทานและกดบันทึกก่อนพิมพ์' })
@@ -109,7 +133,7 @@ export default function Summary() {
         <button className="btn-quiet" onClick={() => { setContent(buildSummaryFromData(data, lang)); setAiUsed(false) }} disabled={!!busy}>สร้างจากโปรไฟล์ตรง ๆ</button>
         <button className="btn-quiet" onClick={() => setEdit(!edit)}>{edit ? 'ดูตัวอย่าง' : 'แก้ไขข้อความ'}</button>
         <button className="btn-quiet" onClick={save} disabled={!!busy}>บันทึกสรุป</button>
-        <button className="btn" onClick={() => { setEdit(false); setTimeout(() => window.print(), 50) }}>พิมพ์</button>
+        <button className="btn" onClick={() => { setEdit(false); setTimeout(printFitted, 80) }}>พิมพ์</button>
         <span className={`small ${words > 500 ? 'alert inline error' : 'muted'}`}>{words} / 500 คำ</span>
         {msg && <span className={`alert inline ${msg.type}`}>{msg.text}</span>}
         {!saved[lang] && !msg && <span className="muted small">ยังไม่ได้บันทึกฉบับ{lang === 'th' ? 'ภาษาไทย' : 'ภาษาอังกฤษ'}</span>}
@@ -146,27 +170,51 @@ export default function Summary() {
               {(th.body || []).map((para, pi) => (
                 <p key={pi}><E path={['themes', i, 'body', pi]} value={para} multi /></p>
               ))}
-              {(th.plan || edit) && (
-                <p className="p-plan"><strong>{t.plan}:</strong> <E path={['themes', i, 'plan']} value={th.plan} multi placeholder="สิ่งที่ควรทำ (เว้นว่างได้)" /></p>
+              {((th.plan || []).length > 0 || edit) && (
+                <div className="p-plan">
+                  <strong>{t.plan}:</strong>
+                  <ul>
+                    {(th.plan || []).map((x, pi) => (
+                      <li key={pi}>
+                        <E path={['themes', i, 'plan', pi, 'action']} value={x.action} placeholder="สิ่งที่ควรทำ" />
+                        {(x.when || edit) && <> <span className="p-when">— <E path={['themes', i, 'plan', pi, 'when']} value={x.when} placeholder="เมื่อไหร่" /></span></>}
+                        {edit && <button className="btn-quiet danger no-print" onClick={() => setContent((c) => setIn(c, ['themes', i, 'plan'], c.themes[i].plan.filter((_, j) => j !== pi)))}>ลบ</button>}
+                      </li>
+                    ))}
+                  </ul>
+                  {edit && <button className="btn-quiet no-print" onClick={() => setContent((c) => setIn(c, ['themes', i, 'plan'], [...(c.themes[i].plan || []), { action: '', when: '' }]))}>เพิ่มแผน</button>}
+                </div>
               )}
             </li>
           ))}
         </ol>
         {edit && (
-          <button className="btn-add no-print" onClick={() => setContent((c) => ({ ...c, themes: [...(c.themes || []), { title: '', body: [''], plan: '' }] }))}>เพิ่มหัวข้อ</button>
+          <button className="btn-add no-print" onClick={() => setContent((c) => ({ ...c, themes: [...(c.themes || []), { title: '', body: [''], plan: [] }] }))}>เพิ่มหัวข้อ</button>
         )}
 
-        {((content.goals || []).length > 0 || content.follow_up || content.closing) && (
+        {((content.goals || []).length > 0 || (content.follow_up || []).length > 0 || content.closing || edit) && (
           <section className="p-goals">
             <h2>{t.goals}</h2>
             <ul>
               {(content.goals || []).map((g, i) => (
                 <li key={i}><strong>{g.label}:</strong> <E path={['goals', i, 'text']} value={g.text} multi /></li>
               ))}
-              {(content.follow_up || edit) && (
-                <li><strong>{t.followUp}:</strong> <E path={['follow_up']} value={content.follow_up} multi /></li>
-              )}
             </ul>
+            {((content.follow_up || []).length > 0 || edit) && (
+              <>
+                <h3 className="p-follow-head">{t.followUp}</h3>
+                <ul className="p-follow">
+                  {(content.follow_up || []).map((f, i) => (
+                    <li key={i}>
+                      <E path={['follow_up', i, 'what']} value={f.what} placeholder="ตรวจอะไร" />
+                      {(f.when || edit) && <> <span className="p-when">— <E path={['follow_up', i, 'when']} value={f.when} placeholder="เมื่อไหร่" /></span></>}
+                      {edit && <button className="btn-quiet danger no-print" onClick={() => setContent((c) => ({ ...c, follow_up: c.follow_up.filter((_, j) => j !== i) }))}>ลบ</button>}
+                    </li>
+                  ))}
+                </ul>
+                {edit && <button className="btn-quiet no-print" onClick={() => setContent((c) => ({ ...c, follow_up: [...(c.follow_up || []), { what: '', when: '' }] }))}>เพิ่มรายการติดตาม</button>}
+              </>
+            )}
             {(content.closing || edit) && (
               <p className="p-closing"><E path={['closing']} value={content.closing} multi placeholder="ประโยคปิดท้ายให้กำลังใจ" /></p>
             )}
