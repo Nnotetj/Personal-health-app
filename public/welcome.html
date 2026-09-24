@@ -2,6 +2,8 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
+<meta name="theme-color" content="#0c0c0c">
+<meta name="color-scheme" content="dark">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Personal Health Profile — แพทย์เห็นภาพรวมครบ คนไข้อ่านเข้าใจ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -80,9 +82,6 @@ a{color:inherit}
 .note.sorted .nrow:nth-child(4) em{transition-delay:.15s}.note.sorted .nrow:nth-child(5) em{transition-delay:.2s}
 .note.sorted .nrow:nth-child(6) em{transition-delay:.25s}.note.sorted .nrow:nth-child(7) em{transition-delay:.3s}
 .note.sorted .nrow:nth-child(8) em{transition-delay:.35s}
-.replay{font:500 13px var(--font);color:var(--ink-2);background:none;border:1px solid var(--line);border-radius:6px;padding:2px 10px;cursor:pointer;opacity:0;transition:opacity .3s}
-.note.sorted .replay{opacity:1}
-.replay:hover{background:var(--paper)}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend span::before{content:'';width:9px;height:9px;border-radius:2px;background:var(--c)}
@@ -329,6 +328,198 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
   *,*::before,*::after{transition:none!important;animation:none!important}
   html{scroll-behavior:auto}
 }
+
+/* =====================================================================
+   DARK THEME (layout ตามแบบอ้างอิง) — ข้อความเหมือนเดิมทั้งหมด
+   ===================================================================== */
+:root{
+  --paper:#0c0c0c; --surface:#141414; --surface-2:#1a1a1a; --ink:#EDEDED; --ink-2:#A1A1A1; --ink-3:#6E6E6E; --line:#262626;
+  --acc:#34D399;
+  --clinical:#F27D8C; --functional:#34D399; --biomarker:#6AAEF5; --imaging:#F2A84B; --omics:#B99AF5;
+}
+body{background:var(--paper);color:var(--ink)}
+body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(900px 480px at 50% -120px, rgba(52,211,153,.14), transparent 70%),
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px) 0 0/48px 48px,
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px) 0 0/48px 48px;
+  -webkit-mask-image:linear-gradient(#000 0, #000 55%, transparent 100%);mask-image:linear-gradient(#000 0,#000 55%,transparent 100%)}
+:focus-visible{outline-color:var(--acc)}
+
+/* top bar with links */
+.top{background:rgba(12,12,12,.8);border-bottom-color:var(--line)}
+.toplinks{display:flex;gap:26px;margin-left:36px}
+.toplinks a{font-size:14.5px;color:var(--ink-2);text-decoration:none;transition:color .2s}
+.toplinks a:hover{color:var(--ink)}
+.chapter{display:none}
+.top .btn.sm{margin-left:auto}
+@media(max-width:860px){.toplinks{display:none}}
+
+/* buttons */
+.btn{background:#EDEDED;color:#0c0c0c;border-color:#EDEDED}
+.btn:hover{background:#fff}
+.btn.ghost{background:transparent;color:var(--ink);border-color:#333}
+.btn.ghost:hover{background:var(--surface);border-color:#444}
+
+/* rail */
+.rail a i{background:var(--paper);border-color:var(--ink-3)}
+.rail a.on i{background:var(--acc);border-color:var(--acc)}
+
+/* hero: centered, demo card below */
+.hero{min-height:auto;padding:calc(var(--top) + 90px) 0 90px}
+.hero .wrap{grid-template-columns:1fr;gap:56px;justify-items:center;text-align:center}
+.hero h1{font-size:clamp(40px,6vw,76px);letter-spacing:-.02em}
+.hero h1 .to{color:var(--acc);font-weight:600}
+.lede{margin:24px auto 0;max-width:40em;color:var(--ink-2)}
+.pillars{margin:32px auto 0;text-align:left}
+.pillar{background:var(--surface);border-color:var(--line);border-left-color:var(--c)}
+.hero .cta{justify-content:center}
+.scroll-hint{color:var(--ink-3)}
+.note{width:min(100%,760px);text-align:left;background:var(--surface);border-color:var(--line);box-shadow:0 0 0 1px rgba(255,255,255,.02),0 40px 80px -40px rgba(52,211,153,.25)}
+.note-h{color:var(--ink-3)}
+.nrow{border-left-color:#333}
+.nrow code,.nrow .fl{color:var(--ink)}
+.note.sorted .nrow{background:color-mix(in srgb,var(--c) 10%,var(--surface))}
+.legend{border-top-color:var(--line);color:var(--ink-2)}
+
+/* section heads: pill kicker like reference */
+section.block{padding:130px 0;border-top:1px solid var(--line)}
+section.block.alt{background:transparent}
+.kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 14px;font-size:13.5px;color:var(--ink-2)!important;margin-bottom:18px}
+.kicker::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 10px var(--acc)}
+#doctor .kicker::before{background:var(--biomarker);box-shadow:0 0 10px var(--biomarker)}
+h2{letter-spacing:-.015em}
+.intro-p{color:var(--ink-2)}
+
+/* before / now */
+.contrast{background:var(--surface);border-color:var(--line)}
+.contrast div{color:var(--ink-2)}
+.contrast small{color:var(--ink-3)}
+.contrast .now{color:var(--ink);background:color-mix(in srgb,var(--biomarker) 9%,var(--surface));border-left-color:var(--line)}
+.contrast .now.g{background:color-mix(in srgb,var(--functional) 9%,var(--surface))}
+
+/* console windows */
+.chrome{display:flex;gap:7px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.chrome i{width:11px;height:11px;border-radius:50%;background:#3a3a3a}
+.chrome i:nth-child(1){background:#ff5f57}.chrome i:nth-child(2){background:#febc2e}.chrome i:nth-child(3){background:#28c840}
+.pmock{background:var(--surface);border-color:var(--line);box-shadow:0 40px 80px -50px rgba(0,0,0,.9)}
+.pm-head{border-bottom-color:var(--line)}
+.pm-head span{color:var(--ink-3)}
+.visits span{border-color:var(--line);color:var(--ink-2)}
+.visits span.on{background:var(--ink);border-color:var(--ink);color:#0c0c0c}
+.pc p{color:var(--ink)}
+.pc p.sum{color:var(--ink-2)}
+.pc .layers span{border-color:color-mix(in srgb,var(--omics) 35%,var(--surface));color:color-mix(in srgb,var(--omics) 60%,var(--surface))}
+.pc .layers span.on{background:var(--omics);border-color:var(--omics);color:#0c0c0c}
+.pm-side{background:var(--surface-2);border-left-color:var(--line)}
+.ps{background:var(--surface);border-color:var(--line)}
+.ps li i{background:rgba(242,168,75,.14);color:var(--imaging)}
+.ps li i.hi{background:rgba(242,125,140,.14);color:var(--clinical)}
+.pg p{color:var(--ink-2)}
+.trend line{stroke:#333}
+.trend polyline,.trend circle{stroke:var(--biomarker)}
+.trend circle:last-child{fill:var(--biomarker)}
+.trend circle{fill:var(--surface)}
+.trend text{fill:var(--ink-3)}
+
+/* numbered cards */
+.gains{gap:16px}
+.gains div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 22px 24px;transition:border-color .2s}
+.gains div:hover{border-color:#3a3a3a}
+.gains .no{display:block;font:500 13px var(--mono);color:var(--acc);margin-bottom:14px}
+.gains span{color:var(--ink-2)}
+
+/* patient */
+.translate{background:var(--surface);border-color:var(--line)}
+.translate div:first-child{color:var(--ink-2);border-bottom-color:var(--line)}
+.translate small{color:var(--ink-3)}
+.ticks li{color:var(--ink-2)}
+.ticks li b{color:var(--ink)}
+.ticks li::before{background:var(--acc)}
+.ticks li::after{border-color:#0c0c0c}
+.lang-toggle{background:var(--surface);border-color:var(--line)}
+.lang-toggle button{color:var(--ink-2)}
+.lang-toggle button.on{background:var(--ink);color:#0c0c0c}
+/* printed documents stay on white paper */
+.sheet-mock,.a4{--ink:#15283A;--ink-2:#4B5E70;--ink-3:#8496A6;color:#15283A;border-color:#2a2a2a;box-shadow:0 40px 80px -40px rgba(0,0,0,.9)}
+.sheet-mock h4 i,.a4 .th i{color:#2A69AC}
+.sheet-mock header,.sheet-mock .goals,.a4 .t,.a4 .g{border-color:#15283A}
+
+/* scrollytelling stage = console */
+.stage{background:var(--surface);border-color:var(--line);box-shadow:0 40px 80px -50px rgba(0,0,0,.9)}
+.scene{top:44px}
+.scene-h{color:var(--ink-3)}
+.s1 pre{color:var(--ink)}
+.caret{background:var(--acc)}
+.fake-btn{background:var(--ink);color:#0c0c0c}
+.lane{background:color-mix(in srgb,var(--c) 10%,var(--surface))}
+.lane p{color:var(--ink)}
+.box{border-color:var(--line);color:var(--ink)}
+.box .pl{color:var(--ink-2)}
+.chip-btn{border-color:#333;color:var(--ink)}
+.chip-btn.dark{background:var(--ink);color:#0c0c0c;border-color:var(--ink)}
+.lang{border-color:var(--line)}
+.lang span.on{background:var(--ink);color:#0c0c0c}
+.step .n{background:transparent;border:1px solid var(--acc);color:var(--acc);font-family:var(--mono)}
+.step p,.step ul{color:var(--ink-2)}
+
+/* safety: architecture-style row */
+.flow{gap:14px}
+.flow div{background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:14px!important;position:relative;counter-increment:flow}
+.flow{counter-reset:flow}
+.flow div::before{content:counter(flow);display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;border:1px solid var(--acc);color:var(--acc);font:500 13px var(--mono);margin-bottom:12px}
+.flow div:last-child{border-color:rgba(52,211,153,.45)!important;background:color-mix(in srgb,var(--acc) 8%,var(--surface))!important}
+.flow span{color:var(--ink-2)}
+.rules li{color:var(--ink-2)}
+.rules li b{color:var(--ink)}
+.rules li::before{background:var(--acc)}
+.rules li::after{border-color:#0c0c0c}
+
+/* final CTA band */
+.final{padding:90px 0 110px}
+.final .wrap{background:linear-gradient(180deg,var(--surface),#0f0f0f);border:1px solid var(--line);border-radius:22px;padding:70px 32px;position:relative;overflow:hidden}
+.final .wrap::before{content:'';position:absolute;inset:-1px;border-radius:22px;padding:1px;pointer-events:none;
+  background:linear-gradient(120deg,rgba(52,211,153,.6),transparent 40%,transparent 60%,rgba(106,174,245,.5));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.final small{color:var(--ink-3)}
+footer{border-top-color:var(--line);color:var(--ink-3)}
+@media(max-width:900px){.stage-col{background:var(--paper)}.scene{top:40px}}
+@media(max-width:700px){.final .wrap{margin:0 16px;padding:48px 20px}}
+
+/* hero card controls */
+.note-h{justify-content:flex-start}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface-2)}
+.seg button{font:500 13.5px var(--font);color:var(--ink-2);background:none;border:0;padding:7px 14px;cursor:pointer;transition:background .2s,color .2s}
+.seg button.on{background:var(--ink);color:#0c0c0c}
+.legend button{display:inline-flex;align-items:center;gap:7px;font:500 13px var(--font);color:var(--ink-2);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:999px;padding:4px 12px;cursor:pointer;transition:border-color .2s,color .2s,background .2s}
+.legend button::before{content:'';width:9px;height:9px;border-radius:2px;background:var(--c)}
+.legend button:hover{border-color:var(--c);color:var(--ink)}
+.legend button.on{border-color:var(--c);color:var(--ink);background:color-mix(in srgb,var(--c) 14%,var(--surface))}
+.note:not(.sorted) .legend button{opacity:.55}
+.nrow{transition:border-color .5s,background .5s,opacity .3s}
+.note.filtering .nrow:not(.pick){opacity:.28}
+.note.filtering .nrow.pick{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 45%,transparent)}
+.note .nrow .fl{animation:none}
+@media(max-width:560px){.seg button{flex:1 1 100%;text-align:left}}
+
+/* hero: neutral (no green / blue) */
+body::before{background:
+    radial-gradient(900px 480px at 50% -120px, rgba(255,255,255,.07), transparent 70%),
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px) 0 0/48px 48px,
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px) 0 0/48px 48px}
+.hero h1 .to{color:var(--ink-2)}
+/* pillar cards: warm gradient accents (ไม่ใช้เขียว/ฟ้า) */
+.hero .pillar[href="#doctor"]{--g1:#FBBF24;--g2:#F97316}
+.hero .pillar[href="#patient"]{--g1:#FB7185;--g2:#E879F9}
+.hero .pillar{position:relative;border:1px solid var(--line);border-radius:14px;padding:16px 18px 16px 22px;overflow:hidden;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--g1) 12%,var(--surface)) 0%,var(--surface) 65%);
+  transition:transform .25s,box-shadow .25s,border-color .25s}
+.hero .pillar::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--g1),var(--g2))}
+.hero .pillar b{background:linear-gradient(90deg,var(--g1),var(--g2));-webkit-background-clip:text;background-clip:text;color:transparent;font-size:19px}
+.hero .pillar:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--g1) 45%,var(--line));
+  box-shadow:0 18px 40px -18px color-mix(in srgb,var(--g2) 55%,transparent)}
+.note{box-shadow:0 0 0 1px rgba(255,255,255,.02),0 40px 80px -40px rgba(0,0,0,.9)}
 </style>
 </head>
 <body>
@@ -337,6 +528,9 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 <header class="top">
   <div class="wrap">
     <a class="brand" href="#hero"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>Personal Health Profile</a>
+    <nav class="toplinks" aria-label="เมนู">
+      <a href="#doctor">สำหรับแพทย์</a><a href="#patient">สำหรับคนไข้</a><a href="#how">ทำงานอย่างไร</a><a href="#safety">ความปลอดภัย</a>
+    </nav>
     <span class="chapter" id="chapter">เริ่มต้น</span>
     <a class="btn sm" href="/login">เข้าสู่ระบบ</a>
   </div>
@@ -372,19 +566,23 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
       </a>
     </div>
 
-    <figure class="note" id="note" aria-label="ตัวอย่าง: โน้ตย่อของแพทย์ถูกจัดเข้า 5 หมวดอัตโนมัติ">
-      <div class="note-h"><span id="noteState">โน้ตย่อ ตามที่แพทย์จด</span><button type="button" class="replay" id="replay">ดูอีกครั้ง</button></div>
-      <div class="nrows" id="nrows">
-        <div class="nrow" data-o="3" style="--c:var(--biomarker)"><code class="sh">LDL 119, HDL 48, sdLDL 23, CRP 1.6</code><span class="fl">LDL-C 119, HDL-C 48, small dense LDL 23, CRP 1.6</span><em>Biomarker</em></div>
-        <div class="nrow" data-o="0" style="--c:var(--clinical)"><code class="sh">u/d = DLP, GERD | smk 20 cigs/d</code><span class="fl">Underlying disease: dyslipidemia, GERD; smoker 20 cigarettes/day</span><em>Clinical</em></div>
-        <div class="nrow" data-o="6" style="--c:var(--imaging)"><code class="sh">US: fatty liver, thyroid nodule TR4</code><span class="fl">Ultrasound: fatty liver; thyroid nodule TI&#8209;RADS&nbsp;4</span><em>Imaging</em></div>
-        <div class="nrow" data-o="1" style="--c:var(--functional)"><code class="sh">BODY: BMI 26, visc fat 2+, BF 32%</code><span class="fl">Body composition: BMI 26, visceral fat 2+, body fat 32%</span><em>Functional</em></div>
-        <div class="nrow" data-o="7" style="--c:var(--omics)"><code class="sh">Bio age 43.3 (CA 49.8), pace 0.8</code><span class="fl">Biological age 43.3 vs chronological age 49.8; pace of aging 0.8</span><em>Multi-omics</em></div>
-        <div class="nrow" data-o="4" style="--c:var(--biomarker)"><code class="sh">Vit D 30, TMAO high</code><span class="fl">Vitamin D 30, TMAO high</span><em>Biomarker</em></div>
-        <div class="nrow" data-o="2" style="--c:var(--functional)"><code class="sh">Fit age 50.6 | lo grip, nl VO2 max</code><span class="fl">Fitness age 50.6; low grip strength, normal VO₂max</span><em>Functional</em></div>
-        <div class="nrow" data-o="5" style="--c:var(--imaging)"><code class="sh">cimt 0.9, plaque | CAC 0, echo nl</code><span class="fl">Carotid IMT 0.9 mm with plaque; CAC score 0; echocardiogram normal</span><em>Imaging</em></div>
+    <figure class="note sorted" id="note" aria-label="ตัวอย่าง: โน้ตย่อของแพทย์ถูกจัดเข้า 5 หมวดอัตโนมัติ">
+      <div class="note-h">
+        <div class="seg" role="group" aria-label="มุมมองโน้ต">
+          <button type="button" data-mode="short">โน้ตย่อ ตามที่แพทย์จด</button><button type="button" data-mode="full" class="on">จัดเข้า 5 หมวด เขียนเป็นคำเต็ม</button>
+        </div>
       </div>
-      <div class="legend" aria-hidden="true"><span style="--c:var(--clinical)">Clinical</span><span style="--c:var(--functional)">Functional</span><span style="--c:var(--biomarker)">Biomarker</span><span style="--c:var(--imaging)">Imaging</span><span style="--c:var(--omics)">Multi-omics</span></div>
+      <div class="nrows" id="nrows">
+        <div class="nrow" data-o="0" data-m="1" data-cat="clinical" style="--c:var(--clinical)"><code class="sh">u/d = DLP, GERD | smk 20 cigs/d</code><span class="fl">Underlying disease: dyslipidemia, GERD; smoker 20 cigarettes/day</span><em>Clinical</em></div>
+        <div class="nrow" data-o="1" data-m="3" data-cat="functional" style="--c:var(--functional)"><code class="sh">BODY: BMI 26, visc fat 2+, BF 32%</code><span class="fl">Body composition: BMI 26, visceral fat 2+, body fat 32%</span><em>Functional</em></div>
+        <div class="nrow" data-o="2" data-m="6" data-cat="functional" style="--c:var(--functional)"><code class="sh">Fit age 50.6 | lo grip, nl VO2 max</code><span class="fl">Fitness age 50.6; low grip strength, normal VO₂max</span><em>Functional</em></div>
+        <div class="nrow" data-o="3" data-m="0" data-cat="biomarker" style="--c:var(--biomarker)"><code class="sh">LDL 119, HDL 48, sdLDL 23, CRP 1.6</code><span class="fl">LDL-C 119, HDL-C 48, small dense LDL 23, CRP 1.6</span><em>Biomarker</em></div>
+        <div class="nrow" data-o="4" data-m="5" data-cat="biomarker" style="--c:var(--biomarker)"><code class="sh">Vit D 30, TMAO high</code><span class="fl">Vitamin D 30, TMAO high</span><em>Biomarker</em></div>
+        <div class="nrow" data-o="5" data-m="7" data-cat="imaging" style="--c:var(--imaging)"><code class="sh">cimt 0.9, plaque | CAC 0, echo nl</code><span class="fl">Carotid IMT 0.9 mm with plaque; CAC score 0; echocardiogram normal</span><em>Imaging</em></div>
+        <div class="nrow" data-o="6" data-m="2" data-cat="imaging" style="--c:var(--imaging)"><code class="sh">US: fatty liver, thyroid nodule TR4</code><span class="fl">Ultrasound: fatty liver; thyroid nodule TI&#8209;RADS&nbsp;4</span><em>Imaging</em></div>
+        <div class="nrow" data-o="7" data-m="4" data-cat="omics" style="--c:var(--omics)"><code class="sh">Bio age 43.3 (CA 49.8), pace 0.8</code><span class="fl">Biological age 43.3 vs chronological age 49.8; pace of aging 0.8</span><em>Multi-omics</em></div>
+      </div>
+      <div class="legend" role="group" aria-label="เลือกดูทีละหมวด"><button type="button" data-cat="clinical" style="--c:var(--clinical)">Clinical</button><button type="button" data-cat="functional" style="--c:var(--functional)">Functional</button><button type="button" data-cat="biomarker" style="--c:var(--biomarker)">Biomarker</button><button type="button" data-cat="imaging" style="--c:var(--imaging)">Imaging</button><button type="button" data-cat="omics" style="--c:var(--omics)">Multi-omics</button></div>
     </figure>
   </div>
 </section>
@@ -393,13 +591,14 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 <section class="block" id="doctor" data-title="สำหรับแพทย์">
   <div class="wrap">
     <p class="kicker" style="color:var(--biomarker)">สำหรับแพทย์</p>
-    <h2>เปิดประวัติคนไข้และข้อมูลสุขภาพทั้ง 5 ด้าน <span class="nw">เห็นภาพรวม</span><span class="nw">ในหน้าเดียว</span></h2>
+    <h2>เปิดประวัติคนไข้และข้อมูลสุขภาพ<span class="nw">ทั้ง 5 ด้าน</span> <span class="nw">เห็นภาพรวม</span><span class="nw">ในหน้าเดียว</span></h2>
     <div class="contrast">
       <div><small>เดิม</small>รายงานหลายสิบหน้าจากหลายแล็บ ต้องเปิดสลับไปมาเพื่อต่อภาพให้ครบ</div>
       <div class="now"><small>ตอนนี้</small>ทุกผลตรวจอยู่ใน 5 หมวดเดิมทุกครั้ง ปัญหาเรียงจากสำคัญที่สุด และแต่ละปัญหามีแผนกำกับ</div>
     </div>
 
     <div class="pmock" aria-label="ตัวอย่างหน้าประวัติคนไข้สำหรับแพทย์">
+      <div class="chrome" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="pm-head">
         <div><b>คุณ ก.</b><span>ชาย อายุ 49 ปี</span></div>
         <div class="visits" aria-label="ประวัติการตรวจ"><span class="on">ก.ย. 2569</span><span>ส.ค. 2568</span><span>ก.ค. 2567</span></div>
@@ -443,9 +642,9 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
     </div>
 
     <div class="gains">
-      <div><b>ข้อมูลอยู่ที่เดิมทุกครั้ง</b><span>5 หมวดเดียวกันทุกคนไข้ แต่ละผลตรวจอยู่ในหมวดเดียว ไม่ซ้ำและไม่ตกหล่น หาข้อมูลได้ทันที</span></div>
-      <div><b>เรื่องสำคัญมาก่อน</b><span>ปัญหาเรียงตามความสำคัญเพื่อการป้องกัน และแผนจัดกลุ่มใต้ปัญหาแต่ละข้อ</span></div>
-      <div><b>ดูย้อนหลังได้ทุกครั้งที่ตรวจ</b><span>สลับดูแต่ละครั้งที่ตรวจ และค่าตัวเลขสำคัญต่อเป็นกราฟแนวโน้มให้อัตโนมัติ</span></div>
+      <div><small class="no">01</small><b>ข้อมูลอยู่ที่เดิมทุกครั้ง</b><span>5 หมวดเดียวกันทุกคนไข้ แต่ละผลตรวจอยู่ในหมวดเดียว ไม่ซ้ำและไม่ตกหล่น หาข้อมูลได้ทันที</span></div>
+      <div><small class="no">02</small><b>เรื่องสำคัญมาก่อน</b><span>ปัญหาเรียงตามความสำคัญเพื่อการป้องกัน และแผนจัดกลุ่มใต้ปัญหาแต่ละข้อ</span></div>
+      <div><small class="no">03</small><b>ดูย้อนหลังได้ทุกครั้งที่ตรวจ</b><span>สลับดูแต่ละครั้งที่ตรวจ และค่าตัวเลขสำคัญต่อเป็นกราฟแนวโน้มให้อัตโนมัติ</span></div>
     </div>
   </div>
 </section>
@@ -512,6 +711,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
     <div class="story">
       <div class="stage-col">
         <div class="stage" id="stage" data-scene="1" aria-live="polite">
+          <div class="chrome" aria-hidden="true"><i></i><i></i><i></i></div>
           <!-- scene 1 -->
           <div class="scene s1" aria-label="ขั้นที่ 1 วางโน้ต">
             <div class="scene-h"><span>สรุป pertinent findings</span><span>ไม่ต้องใส่ชื่อหรือ HN</span></div>
@@ -598,7 +798,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
         <article class="step" data-scene="4">
           <span class="n">4</span>
           <h3>ได้สรุป 1 หน้าให้คนไข้ ทั้งไทยและอังกฤษ</h3>
-          <p>เขียนด้วยภาษาชาวบ้าน เรียงเรื่องสำคัญก่อน แต่ละเรื่องบอกว่าต้องทำอะไรและเมื่อไหร่ ไม่เกิน 500 คำ พิมพ์พอดี A4</p>
+          <p>สรุปด้วยภาษาที่เข้าใจง่าย เรียงเรื่องสำคัญก่อน แต่ละเรื่องบอกว่าต้องทำอะไรและเมื่อไหร่ ไม่เกิน 500 คำ พิมพ์พอดี A4</p>
           <ul><li>แปลฉบับอังกฤษที่หมอตรวจแล้วเป็นไทย ใจความตรงกันทุกข้อ</li></ul>
         </article>
       </div>
@@ -668,29 +868,37 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
   }, { rootMargin: '-45% 0px -50% 0px' })
   document.querySelectorAll('main > section').forEach((s) => secObs.observe(s))
 
-  // hero: โน้ตที่ปนกัน -> เรียงเข้า 5 หมวด (FLIP animation)
+  // hero card: สลับ โน้ตย่อ / คำเต็ม และเลือกดูทีละหมวด (ผู้ใช้กดเอง)
   const note = document.getElementById('note'), list = document.getElementById('nrows')
-  const state = document.getElementById('noteState'), replayBtn = document.getElementById('replay')
-  const mixed = [...list.children]
-  function sortRows() {
+  const segBtns = [...note.querySelectorAll('.seg button')], catBtns = [...note.querySelectorAll('.legend button')]
+  function reorder(key) {
     const rows = [...list.children]
     const first = new Map(rows.map((r) => [r, r.getBoundingClientRect().top]))
-    rows.sort((a, b) => a.dataset.o - b.dataset.o).forEach((r) => list.appendChild(r))
-    note.classList.add('sorted')
+    rows.sort((a, b) => a.dataset[key] - b.dataset[key]).forEach((r) => list.appendChild(r))
     if (!reduce) rows.forEach((r) => {
       const dy = first.get(r) - r.getBoundingClientRect().top
-      r.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 700, easing: 'cubic-bezier(.2,.7,.2,1)' })
+      if (dy) r.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 600, easing: 'cubic-bezier(.2,.7,.2,1)' })
     })
-    note.classList.add('sorted')
-    state.textContent = 'จัดเข้า 5 หมวด เขียนเป็นคำเต็ม'
   }
-  function reset() {
-    note.classList.remove('sorted')
-    mixed.forEach((r) => list.appendChild(r))
-    state.textContent = 'โน้ตย่อ ตามที่แพทย์จด'
+  function setMode(mode) {
+    segBtns.forEach((b) => b.classList.toggle('on', b.dataset.mode === mode))
+    const full = mode === 'full'
+    note.classList.toggle('sorted', full)
+    if (!full) setCat(null)
+    reorder(full ? 'o' : 'm')
   }
-  replayBtn.addEventListener('click', () => { reset(); setTimeout(sortRows, 900) })
-  setTimeout(sortRows, reduce ? 0 : 1400)
+  let activeCat = null
+  function setCat(cat) {
+    activeCat = cat
+    catBtns.forEach((b) => b.classList.toggle('on', b.dataset.cat === cat))
+    note.classList.toggle('filtering', !!cat)
+    ;[...list.children].forEach((r) => r.classList.toggle('pick', r.dataset.cat === cat))
+  }
+  segBtns.forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)))
+  catBtns.forEach((b) => b.addEventListener('click', () => {
+    if (!note.classList.contains('sorted')) setMode('full')
+    setCat(activeCat === b.dataset.cat ? null : b.dataset.cat)
+  }))
 
   // scrollytelling: switch scene by active step
   const stage = document.getElementById('stage')
