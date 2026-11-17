@@ -48,7 +48,7 @@ export default function PatientForm({ patient, onClose, onSaved }) {
         <label className="span-2">ประวัติพื้นฐาน (โรคประจำตัว ยา แพ้ยา ประวัติครอบครัว ไลฟ์สไตล์)
           <textarea rows={4} value={f.background || ''} onChange={set('background')} />
         </label>
-        {err && <p className="alert error span-2">{err}</p>}
+        {err && <p className="alert error span-2" role="alert">{err}</p>}
         <div className="actions span-2">
           <button type="button" className="btn-quiet" onClick={onClose}>ยกเลิก</button>
           <button className="btn" disabled={busy}>บันทึกคนไข้</button>

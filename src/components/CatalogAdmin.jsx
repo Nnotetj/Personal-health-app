@@ -28,7 +28,7 @@ export default function CatalogAdmin() {
   return (
     <>
       <div className="toolbar">
-        <input className="search" placeholder="ค้นหาชื่อ, code หรือชื่อเรียกอื่น" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="search" type="search" aria-label="ค้นหาการตรวจด้วยชื่อ, code หรือชื่อเรียกอื่น" placeholder="ค้นหาชื่อ, code หรือชื่อเรียกอื่น" value={q} onChange={(e) => setQ(e.target.value)} />
         <select value={cat} onChange={(e) => setCat(e.target.value)} style={{ width: 'auto' }} aria-label="หมวด">
           <option value="all">ทุกหมวด</option>
           {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.name}</option>)}
@@ -48,7 +48,7 @@ export default function CatalogAdmin() {
                 <td>{r.unit}</td>
                 <td className="num">{refText(r, 'M') || '-'}{(r.ref_low_f != null || r.ref_high_f != null) && ` / ${refText(r, 'F')}`}</td>
                 <td className="small muted">{(r.aliases || []).join(', ')}</td>
-                <td><button className="btn-quiet" onClick={() => setEdit({ ...r, aliases: (r.aliases || []).join(', ') })}>แก้ไข</button></td>
+                <td><button type="button" className="btn-quiet" aria-label={`แก้ไข ${r.name}`} onClick={() => setEdit({ ...r, aliases: (r.aliases || []).join(', ') })}>แก้ไข</button></td>
               </tr>
             ))}
           </tbody>
@@ -112,7 +112,7 @@ function CatalogForm({ row, onClose, onSaved }) {
         <label className="span-2">ชื่อเรียกอื่น (คั่นด้วย ,)<input value={f.aliases} onChange={set('aliases')} placeholder="ldl, ldl-c, direct ldl" /></label>
         <label className="switch"><input type="checkbox" checked={!!f.is_active} onChange={set('is_active')} />ใช้งาน</label>
         <label>ลำดับ<input inputMode="numeric" value={f.sort_order} onChange={set('sort_order')} /></label>
-        {err && <p className="alert error span-2">{err}</p>}
+        {err && <p className="alert error span-2" role="alert">{err}</p>}
         <div className="actions span-2">
           <button type="button" className="btn-quiet" onClick={onClose}>ยกเลิก</button>
           <button className="btn">บันทึกการตรวจ</button>

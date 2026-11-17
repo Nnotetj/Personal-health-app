@@ -23,7 +23,11 @@ export default function Sparkline({ points, current, w = 84, h = 26 }) {
             fill={points[i].visit_id === current ? 'var(--ink)' : 'currentColor'} />
         ))}
       </svg>
-      {delta != null && <span className="delta">{delta > 0 ? '+' : ''}{+delta.toFixed(2)}</span>}
+      {delta != null && <span className="delta" aria-hidden="true">{delta > 0 ? '+' : ''}{+delta.toFixed(2)}</span>}
+      <span className="sr-only">
+        แนวโน้ม {points.map((p) => `${fmtDate(p.date)} ${p.value}`).join(', ')}
+        {delta != null && `, เปลี่ยนจากครั้งก่อน ${delta > 0 ? '+' : ''}${+delta.toFixed(2)}`}
+      </span>
     </span>
   )
 }

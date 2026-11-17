@@ -14,13 +14,16 @@ export default function Patients() {
   const [creating, setCreating] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  const [loadErr, setLoadErr] = useState(null)
+
   async function load() {
-    setLoading(true)
-    const { data } = await supabase
+    setLoading(true); setLoadErr(null)
+    const { data, error } = await supabase
       .from('patients')
       .select('*, owner:profiles!patients_owner_id_fkey(full_name), visits(id, visit_date, status)')
       .order('updated_at', { ascending: false })
-    setRows(data || [])
+    if (error) setLoadErr(error.message)
+    else setRows(data || [])
     setLoading(false)
   }
   useEffect(() => { load() }, [])
@@ -41,15 +44,21 @@ export default function Patients() {
       </div>
 
       <div className="toolbar">
-        <input className="search" placeholder="ค้นหาชื่อหรือ HN" value={q} onChange={(e) => setQ(e.target.value)} />
-        <div className="seg" role="tablist">
+        <input className="search" type="search" aria-label="ค้นหาคนไข้ด้วยชื่อหรือ HN" placeholder="ค้นหาชื่อหรือ HN" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="seg" role="group" aria-label="แสดงคนไข้">
           {[['all', 'ทั้งหมด'], ['mine', 'ของฉัน'], ['shared', profile.role === 'admin' ? 'ของแพทย์อื่น' : 'แชร์กับฉัน']].map(([k, l]) => (
-            <button key={k} role="tab" aria-selected={scope === k} className={scope === k ? 'on' : ''} onClick={() => setScope(k)}>{l}</button>
+            <button key={k} type="button" aria-pressed={scope === k} className={scope === k ? 'on' : ''} onClick={() => setScope(k)}>{l}</button>
           ))}
         </div>
       </div>
 
-      {loading ? <p className="muted">กำลังโหลด…</p> : list.length === 0 ? (
+      {loading ? <p className="muted" role="status">กำลังโหลดรายชื่อคนไข้…</p> : loadErr ? (
+        <div className="empty" role="alert">
+          <p>โหลดรายชื่อคนไข้ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง</p>
+          <p className="muted small">{loadErr}</p>
+          <button type="button" className="btn" onClick={load}>ลองอีกครั้ง</button>
+        </div>
+      ) : list.length === 0 ? (
         <div className="empty">
           <p>ยังไม่มีคนไข้ในรายการนี้</p>
           <button className="btn" onClick={() => setCreating(true)}>เพิ่มคนไข้คนแรก</button>

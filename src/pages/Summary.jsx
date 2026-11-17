@@ -109,19 +109,19 @@ export default function Summary() {
   const { patient, visit } = data
   const words = countWords(content)
   const upd = (path, val) => setContent((c) => setIn(c, path, val))
-  const E = ({ path, value, multi, className, placeholder }) => edit
+  const E = ({ path, value, multi, className, placeholder, label }) => edit
     ? (multi
-      ? <textarea className={`e ${className || ''}`} rows={3} defaultValue={value} placeholder={placeholder} onBlur={(e) => upd(path, e.target.value)} />
-      : <input className={`e ${className || ''}`} defaultValue={value} placeholder={placeholder} onBlur={(e) => upd(path, e.target.value)} />)
+      ? <textarea className={`e ${className || ''}`} rows={3} aria-label={label || placeholder} defaultValue={value} placeholder={placeholder} onBlur={(e) => upd(path, e.target.value)} />
+      : <input className={`e ${className || ''}`} aria-label={label || placeholder} defaultValue={value} placeholder={placeholder} onBlur={(e) => upd(path, e.target.value)} />)
     : <span className={className}>{value}</span>
 
   return (
     <div className="summary-page">
       <div className="summary-tools no-print">
         <Link to={`/patients/${patient.id}`} className="back">กลับไปโปรไฟล์</Link>
-        <div className="seg">
-          <button className={lang === 'th' ? 'on' : ''} onClick={() => setLang('th')}>ไทย</button>
-          <button className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')}>English</button>
+        <div className="seg" role="group" aria-label="ภาษาของสรุป">
+          <button type="button" aria-pressed={lang === 'th'} className={lang === 'th' ? 'on' : ''} onClick={() => setLang('th')}>ไทย</button>
+          <button type="button" aria-pressed={lang === 'en'} className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')}>English</button>
         </div>
         {lang === 'th' && (
           <button className="btn-quiet" onClick={translateFromEnglish} disabled={!!busy || !saved.en}
@@ -135,7 +135,7 @@ export default function Summary() {
         <button className="btn-quiet" onClick={save} disabled={!!busy}>บันทึกสรุป</button>
         <button className="btn" onClick={() => { setEdit(false); setTimeout(printFitted, 80) }}>พิมพ์</button>
         <span className={`small ${words > 500 ? 'alert inline error' : 'muted'}`}>{words} / 500 คำ</span>
-        {msg && <span className={`alert inline ${msg.type}`}>{msg.text}</span>}
+        {msg && <span role="status" className={`alert inline ${msg.type}`}>{msg.text}</span>}
         {!saved[lang] && !msg && <span className="muted small">ยังไม่ได้บันทึกฉบับ{lang === 'th' ? 'ภาษาไทย' : 'ภาษาอังกฤษ'}</span>}
       </div>
 
@@ -164,11 +164,11 @@ export default function Summary() {
             <li key={i}>
               <h2>
                 <span className="p-num">{i + 1}.</span>
-                <E path={['themes', i, 'title']} value={th.title} placeholder="หัวข้อ" />
-                {edit && <button className="btn-quiet danger no-print" onClick={() => setContent((c) => ({ ...c, themes: c.themes.filter((_, j) => j !== i) }))}>ลบหัวข้อ</button>}
+                <E path={['themes', i, 'title']} value={th.title} placeholder="หัวข้อ" label={`หัวข้อที่ ${i + 1}`} />
+                {edit && <button type="button" aria-label={`ลบหัวข้อที่ ${i + 1}`} className="btn-quiet danger no-print" onClick={() => setContent((c) => ({ ...c, themes: c.themes.filter((_, j) => j !== i) }))}>ลบหัวข้อ</button>}
               </h2>
               {(th.body || []).map((para, pi) => (
-                <p key={pi}><E path={['themes', i, 'body', pi]} value={para} multi /></p>
+                <p key={pi}><E path={['themes', i, 'body', pi]} value={para} multi label={`เนื้อหาหัวข้อที่ ${i + 1}`} /></p>
               ))}
               {((th.plan || []).length > 0 || edit) && (
                 <div className="p-plan">
@@ -176,9 +176,9 @@ export default function Summary() {
                   <ul>
                     {(th.plan || []).map((x, pi) => (
                       <li key={pi}>
-                        <E path={['themes', i, 'plan', pi, 'action']} value={x.action} placeholder="สิ่งที่ควรทำ" />
-                        {(x.when || edit) && <> <span className="p-when">— <E path={['themes', i, 'plan', pi, 'when']} value={x.when} placeholder="เมื่อไหร่" /></span></>}
-                        {edit && <button className="btn-quiet danger no-print" onClick={() => setContent((c) => setIn(c, ['themes', i, 'plan'], c.themes[i].plan.filter((_, j) => j !== pi)))}>ลบ</button>}
+                        <E path={['themes', i, 'plan', pi, 'action']} value={x.action} placeholder="สิ่งที่ควรทำ" label={`สิ่งที่ควรทำ ${pi + 1} ของหัวข้อที่ ${i + 1}`} />
+                        {(x.when || edit) && <> <span className="p-when">— <E path={['themes', i, 'plan', pi, 'when']} value={x.when} placeholder="เมื่อไหร่" label={`เมื่อไหร่ ${pi + 1} ของหัวข้อที่ ${i + 1}`} /></span></>}
+                        {edit && <button type="button" aria-label={`ลบแผน ${pi + 1} ของหัวข้อที่ ${i + 1}`} className="btn-quiet danger no-print" onClick={() => setContent((c) => setIn(c, ['themes', i, 'plan'], c.themes[i].plan.filter((_, j) => j !== pi)))}>ลบ</button>}
                       </li>
                     ))}
                   </ul>
@@ -197,7 +197,7 @@ export default function Summary() {
             <h2>{t.goals}</h2>
             <ul>
               {(content.goals || []).map((g, i) => (
-                <li key={i}><strong>{g.label}:</strong> <E path={['goals', i, 'text']} value={g.text} multi /></li>
+                <li key={i}><strong>{g.label}:</strong> <E path={['goals', i, 'text']} value={g.text} multi label={g.label} /></li>
               ))}
             </ul>
             {((content.follow_up || []).length > 0 || edit) && (
@@ -206,9 +206,9 @@ export default function Summary() {
                 <ul className="p-follow">
                   {(content.follow_up || []).map((f, i) => (
                     <li key={i}>
-                      <E path={['follow_up', i, 'what']} value={f.what} placeholder="ตรวจอะไร" />
-                      {(f.when || edit) && <> <span className="p-when">— <E path={['follow_up', i, 'when']} value={f.when} placeholder="เมื่อไหร่" /></span></>}
-                      {edit && <button className="btn-quiet danger no-print" onClick={() => setContent((c) => ({ ...c, follow_up: c.follow_up.filter((_, j) => j !== i) }))}>ลบ</button>}
+                      <E path={['follow_up', i, 'what']} value={f.what} placeholder="ตรวจอะไร" label={`ตรวจอะไร รายการที่ ${i + 1}`} />
+                      {(f.when || edit) && <> <span className="p-when">— <E path={['follow_up', i, 'when']} value={f.when} placeholder="เมื่อไหร่" label={`เมื่อไหร่ รายการที่ ${i + 1}`} /></span></>}
+                      {edit && <button type="button" aria-label={`ลบรายการติดตามที่ ${i + 1}`} className="btn-quiet danger no-print" onClick={() => setContent((c) => ({ ...c, follow_up: c.follow_up.filter((_, j) => j !== i) }))}>ลบ</button>}
                     </li>
                   ))}
                 </ul>

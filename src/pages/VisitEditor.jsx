@@ -10,6 +10,7 @@ import { loadCatalog, normalizeFinding, computeFlag, unitMismatch } from '../lib
 
 const emptyValue = (category = 'biomarker') =>
   ({ _k: uid(), _manual: true, category, test_code: '', test_name: '', value_num: '', unit: '', ref_range: '', flag: 'normal' })
+const rowName = (f) => f.test_name?.trim() || 'แถวที่ยังไม่มีชื่อ'
 const SECTION_KEYS = [...CATEGORIES.map((c) => c.key), INTEGRATED.key, PROBLEM_LIST.key, PLAN_TEXT.key]
 const emptySections = () => Object.fromEntries(SECTION_KEYS.map((k) => [k, '']))
 
@@ -141,7 +142,7 @@ export default function VisitEditor() {
           <button className="btn" disabled={!!busy} onClick={() => save('final')}>{busy === 'save' ? 'กำลังบันทึก…' : 'บันทึกและยืนยัน'}</button>
         </div>
       </div>
-      {err && <p className="alert error">{err}</p>}
+      {err && <p className="alert error" role="alert">{err}</p>}
 
       <div className="editor-grid">
         {/* Step 1 */}
@@ -151,7 +152,7 @@ export default function VisitEditor() {
             <label>วันที่ตรวจ<input type="date" value={visit.visit_date} onChange={(e) => setV('visit_date', e.target.value)} /></label>
             <label>แพ็กเกจ<input value={visit.package_name || ''} onChange={(e) => setV('package_name', e.target.value)} /></label>
           </div>
-          <textarea className="note" rows={16} placeholder={PLACEHOLDER} value={visit.raw_note || ''} onChange={(e) => setV('raw_note', e.target.value)} />
+          <textarea className="note" rows={16} aria-label="สรุป pertinent findings (โน้ตผลตรวจ)" placeholder={PLACEHOLDER} value={visit.raw_note || ''} onChange={(e) => setV('raw_note', e.target.value)} />
           <p className="muted small">ไม่ต้องใส่ชื่อหรือ HN ในโน้ต ระบบจะส่งเพียงเพศ อายุ และประวัติพื้นฐานไปให้ AI</p>
           <button className="btn" onClick={runAI} disabled={!!busy}>{busy === 'ai' ? 'AI กำลังจัดหมวด…' : 'ให้ AI ร่างและจัดหมวด'}</button>
           <label className="mt">บันทึกแพทย์ (เห็นเฉพาะแพทย์)
@@ -167,11 +168,12 @@ export default function VisitEditor() {
           {CATEGORIES.map((c) => (
             <section key={c.key} className={`sec-edit cat-${c.key}`}>
               <header>
-                <h3>{c.name}</h3>
+                <h3 id={`sec-${c.key}`}>{c.name}</h3>
                 <span className="muted small">{c.hint}</span>
               </header>
               <textarea
                 className="sec-text"
+                aria-labelledby={`sec-${c.key}`}
                 rows={Math.min(Math.max((sections[c.key] || '').split('\n').length + 1, 3), 16)}
                 placeholder={`ยังไม่มีข้อมูลใน ${c.name}`}
                 value={sections[c.key] || ''}
@@ -182,11 +184,12 @@ export default function VisitEditor() {
 
           <section className="sec-edit cat-integrated">
             <header>
-              <h3>{INTEGRATED.name}</h3>
+              <h3 id="sec-integrated">{INTEGRATED.name}</h3>
               <span className="muted small">{INTEGRATED.hint}</span>
             </header>
             <textarea
               className="sec-text"
+              aria-labelledby="sec-integrated"
               rows={Math.min(Math.max((sections.integrated || '').split('\n').length + 1, 3), 10)}
               placeholder="ยังไม่มี Integrated Profile"
               value={sections.integrated || ''}
@@ -207,21 +210,21 @@ export default function VisitEditor() {
                   const suggested = entry ? computeFlag(entry, f.value_num, sex, f.unit) : null
                   return (
                     <div key={f._k} className={`v-row cat-${f.category}`}>
-                      <select value={f.category} onChange={(e) => updValue(f._k, 'category', e.target.value)} aria-label="หมวด">
+                      <select value={f.category} onChange={(e) => updValue(f._k, 'category', e.target.value)} aria-label={`หมวดของ ${rowName(f)}`}>
                         {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.name}</option>)}
                       </select>
-                      <input className="w-name" placeholder="ชื่อการตรวจ" list="all-tests" value={f.test_name}
+                      <input className="w-name" placeholder="ชื่อการตรวจ" aria-label="ชื่อการตรวจ" list="all-tests" value={f.test_name}
                         onChange={(e) => { updValue(f._k, 'test_name', e.target.value); updValue(f._k, 'test_code', '') }}
                         onBlur={() => normalizeRow(f._k)} />
-                      <input className="w-val" placeholder="ค่า" inputMode="decimal" value={f.value_num}
+                      <input className="w-val" placeholder="ค่า" aria-label={`ค่า ${rowName(f)}`} inputMode="decimal" value={f.value_num}
                         onChange={(e) => updValue(f._k, 'value_num', e.target.value)} onBlur={() => normalizeRow(f._k)} />
-                      <input className="w-unit" placeholder="หน่วย" value={f.unit || ''} onChange={(e) => updValue(f._k, 'unit', e.target.value)} />
-                      <input className="w-ref" placeholder="ค่าอ้างอิง" value={f.ref_range || ''} onChange={(e) => updValue(f._k, 'ref_range', e.target.value)} />
+                      <input className="w-unit" placeholder="หน่วย" aria-label={`หน่วย ${rowName(f)}`} value={f.unit || ''} onChange={(e) => updValue(f._k, 'unit', e.target.value)} />
+                      <input className="w-ref" placeholder="ค่าอ้างอิง" aria-label={`ค่าอ้างอิง ${rowName(f)}`} value={f.ref_range || ''} onChange={(e) => updValue(f._k, 'ref_range', e.target.value)} />
                       <select className={`w-flag flag-${f.flag}`} value={f.flag}
-                        onChange={(e) => { updValue(f._k, 'flag', e.target.value); updValue(f._k, '_manual', false) }} aria-label="สถานะ">
+                        onChange={(e) => { updValue(f._k, 'flag', e.target.value); updValue(f._k, '_manual', false) }} aria-label={`Flag ${rowName(f)}`}>
                         {Object.entries(FLAGS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                       </select>
-                      <button className="btn-quiet danger" onClick={touch(() => setValues((r) => r.filter((x) => x._k !== f._k)))}>ลบ</button>
+                      <button type="button" className="btn-quiet danger" aria-label={`ลบ ${rowName(f)}`} onClick={touch(() => setValues((r) => r.filter((x) => x._k !== f._k)))}>ลบ</button>
                       {entry && unitMismatch(entry, f.unit)
                         ? <p className="f-hint warn">หน่วยต่างจากมาตรฐาน ({entry.unit}) ระบบจึงไม่เช็ก flag ให้</p>
                         : suggested && suggested !== f.flag
@@ -242,8 +245,9 @@ export default function VisitEditor() {
 
           {[PROBLEM_LIST, PLAN_TEXT].map((box) => (
             <section key={box.key} className="text-box">
-              <h3 className="sub">{box.name} <span className="muted small">{box.hint}</span></h3>
+              <h3 className="sub" id={`sec-${box.key}`}>{box.name} <span className="muted small">{box.hint}</span></h3>
               <textarea
+                aria-labelledby={`sec-${box.key}`}
                 className="sec-text"
                 rows={Math.min(Math.max((sections[box.key] || '').split('\n').length + 1, 4), 16)}
                 placeholder={`ยังไม่มี${box.name}`}
