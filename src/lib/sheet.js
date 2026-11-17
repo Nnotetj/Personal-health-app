@@ -14,13 +14,75 @@ export const LEVELS = {
   medium: { th: 'ปานกลาง', en: 'Medium' },
   low: { th: 'ต่ำ', en: 'Low' },
 }
-export const levelLabel = (l) => `${LEVELS[l]?.th || LEVELS.medium.th} (${LEVELS[l]?.en || LEVELS.medium.en})`
 
-export const PLAN_TYPES = ['ยา', 'อาหารเสริม', 'โภชนาการ', 'วิถีชีวิต', 'ตรวจติดตาม', 'ส่งต่อ', 'อื่น ๆ']
+// ภาษาของเอกสาร: bi = ไทย+English (ตามฟอร์มต้นฉบับ), en = English ทั้งฉบับ, th = ไทยทั้งฉบับ
+export const DOC_LANGS = [
+  { key: 'bi', label: 'ไทย + English' },
+  { key: 'en', label: 'English' },
+  { key: 'th', label: 'ไทย' },
+]
+// ค่าใน patient_summaries.language (bi ใช้ของเดิม; en/th เดิมถูกใช้กับสรุปคนไข้ 1 หน้าแล้ว จึงต้องใช้ค่าใหม่)
+export const ROW_KEY = { bi: 'bi', en: 'sheet_en', th: 'sheet_th' }
+
+export function levelLabel(l, lang = 'bi') {
+  const x = LEVELS[l] || LEVELS.medium
+  return lang === 'en' ? x.en : lang === 'th' ? x.th : `${x.th} (${x.en})`
+}
+
+export const PLAN_TYPES_TH = ['ยา', 'อาหารเสริม', 'โภชนาการ', 'วิถีชีวิต', 'ตรวจติดตาม', 'ส่งต่อ', 'อื่น ๆ']
+export const PLAN_TYPES_EN = ['Medication', 'Supplement', 'Nutrition', 'Lifestyle', 'Follow-up test', 'Referral', 'Other']
+export const planTypes = (lang) => (lang === 'en' ? PLAN_TYPES_EN : PLAN_TYPES_TH)
+
+// ป้ายคงที่ของฟอร์ม (ตามต้นฉบับ PDF)
+export const LABELS = {
+  bi: {
+    kicker: 'PERSONAL HEALTH PROFILE', title: 'แบบบันทึกข้อมูลสุขภาพส่วนบุคคล',
+    sub: 'รายการปัญหาสุขภาพเรียงตามความสำคัญ และแผนการดูแลรักษา (Problem List and Plan of Management)',
+    s1: ['1. ข้อมูลทั่วไปและประวัติที่เกี่ยวข้อง', '(General Information)'],
+    name: 'ชื่อ–นามสกุล', hn: 'HN / รหัสประจำตัว', ageSex: 'อายุ / เพศ', date: 'วันที่ประเมิน', doctor: 'แพทย์ผู้ดูแล', allergy: 'ประวัติแพ้ยา',
+    family: 'ประวัติครอบครัว:', meds: 'ยาและอาหารเสริมปัจจุบัน',
+    medCols: ['ยา / อาหารเสริม', 'ขนาดและข้อบ่งใช้', 'สถานะ'],
+    s2: ['2. รายการปัญหาเรียงตามความสำคัญ', '(Problem List)'], probCols: ['ลำดับ', 'ปัญหา', 'ระดับ', 'ข้อมูลสนับสนุน'],
+    s3: ['3. แผนการดูแลรักษา', '(Plan of Management)'], planCols: ['ประเภท', 'การดำเนินการ', 'เป้าหมาย', 'ติดตามผล'], general: ['ทั่วไป', '(General)'],
+    s4: ['4. ตารางนัดติดตามรวม', '(Follow-up Schedule)'], followCols: ['ช่วงเวลา', 'รายการ', 'ปัญหาที่เกี่ยวข้อง'],
+    s5: ['5. การรับรองข้อมูล', '(Authorization)'], signDoctor: 'แพทย์ผู้ประเมิน (ลายมือชื่อ / เลขที่ใบอนุญาต)', signDate: 'วันที่',
+    ageUnit: 'ปี', sex: { M: 'ชาย', F: 'หญิง', other: 'อื่น ๆ' }, item: 'ข้อ', generalRef: 'ทั่วไป', dateLang: 'th',
+  },
+  en: {
+    kicker: 'PERSONAL HEALTH PROFILE', title: 'Personal Health Profile Form',
+    sub: 'Prioritised health problem list and plan of management',
+    s1: ['1. General Information and Relevant History', ''],
+    name: 'Full name', hn: 'HN / Patient ID', ageSex: 'Age / Sex', date: 'Assessment date', doctor: 'Attending physician', allergy: 'Drug allergy',
+    family: 'Family history:', meds: 'Current medications and supplements',
+    medCols: ['Medication / supplement', 'Dose and indication', 'Status'],
+    s2: ['2. Problem List (ranked by priority)', ''], probCols: ['No.', 'Problem', 'Level', 'Supporting data'],
+    s3: ['3. Plan of Management', ''], planCols: ['Type', 'Action', 'Target', 'Follow-up'], general: ['General', ''],
+    s4: ['4. Follow-up Schedule', ''], followCols: ['Timing', 'Item', 'Related problem(s)'],
+    s5: ['5. Authorization', ''], signDoctor: 'Physician (signature / license no.)', signDate: 'Date',
+    ageUnit: 'yrs', sex: { M: 'Male', F: 'Female', other: 'Other' }, item: 'No.', generalRef: 'General', dateLang: 'en',
+  },
+  th: {
+    kicker: 'PERSONAL HEALTH PROFILE', title: 'แบบบันทึกข้อมูลสุขภาพส่วนบุคคล',
+    sub: 'รายการปัญหาสุขภาพเรียงตามความสำคัญ และแผนการดูแลรักษา',
+    s1: ['1. ข้อมูลทั่วไปและประวัติที่เกี่ยวข้อง', ''],
+    name: 'ชื่อ–นามสกุล', hn: 'HN / รหัสประจำตัว', ageSex: 'อายุ / เพศ', date: 'วันที่ประเมิน', doctor: 'แพทย์ผู้ดูแล', allergy: 'ประวัติแพ้ยา',
+    family: 'ประวัติครอบครัว:', meds: 'ยาและอาหารเสริมปัจจุบัน',
+    medCols: ['ยา / อาหารเสริม', 'ขนาดและข้อบ่งใช้', 'สถานะ'],
+    s2: ['2. รายการปัญหาเรียงตามความสำคัญ', ''], probCols: ['ลำดับ', 'ปัญหา', 'ระดับ', 'ข้อมูลสนับสนุน'],
+    s3: ['3. แผนการดูแลรักษา', ''], planCols: ['ประเภท', 'การดำเนินการ', 'เป้าหมาย', 'ติดตามผล'], general: ['ทั่วไป', ''],
+    s4: ['4. ตารางนัดติดตามรวม', ''], followCols: ['ช่วงเวลา', 'รายการ', 'ปัญหาที่เกี่ยวข้อง'],
+    s5: ['5. การรับรองข้อมูล', ''], signDoctor: 'แพทย์ผู้ประเมิน (ลายมือชื่อ / เลขที่ใบอนุญาต)', signDate: 'วันที่',
+    ageUnit: 'ปี', sex: { M: 'ชาย', F: 'หญิง', other: 'อื่น ๆ' }, item: 'ข้อ', generalRef: 'ทั่วไป', dateLang: 'th',
+  },
+}
 
 const sectionText = (sections, cat) => sections.find((s) => s.category === cat)?.content || ''
 
-// Domain (อังกฤษ) -> ประเภท (ไทย)
+// Domain (อังกฤษ) -> ประเภทแผน (ไทยหรืออังกฤษตามภาษาเอกสาร)
+function planType(domain, lang) {
+  const th = thaiType(domain)
+  return lang === 'en' ? PLAN_TYPES_EN[PLAN_TYPES_TH.indexOf(th)] : th
+}
 function thaiType(domain) {
   const d = String(domain || '').toLowerCase()
   if (/medic|drug|ยา$|^ยา/.test(d)) return 'ยา'
@@ -47,7 +109,7 @@ function parseProblems(text) {
 }
 
 // "1. ชื่อปัญหา" / "General" ตามด้วย "- Domain: action | Target: … | เวลา"
-function parsePlan(text) {
+function parsePlan(text, lang) {
   const groups = new Map()
   let cur = 0
   for (const raw of String(text || '').split('\n')) {
@@ -63,7 +125,7 @@ function parsePlan(text) {
     const target = parts.find((x, i) => i > 0 && /^target\s*:/i.test(x))?.replace(/^target\s*:\s*/i, '') || ''
     const follow = parts.filter((x, i) => i > 0 && !/^target\s*:/i.test(x)).join(', ')
     if (!groups.has(n)) groups.set(n, [])
-    groups.get(n).push({ type: thaiType(dm ? dm[1] : ''), action: dm ? dm[2] : parts[0], target, follow_up: follow })
+    groups.get(n).push({ type: planType(dm ? dm[1] : '', lang), action: dm ? dm[2] : parts[0], target, follow_up: follow })
   }
   return [...groups.entries()].sort((a, b) => (a[0] || 999) - (b[0] || 999)).map(([problem, items]) => ({ problem, items }))
 }
@@ -94,7 +156,7 @@ export function buildFollowup(problems, plan) {
 }
 
 // สร้างจากโปรไฟล์ตรง ๆ (ไม่ใช้ AI): ไทยจะว่าง ต้องกดให้ AI เติมหรือพิมพ์เอง
-export function buildSheetFromData({ problems = [], plan = [], sections = [] }) {
+export function buildSheetFromData({ problems = [], plan = [], sections = [] }, lang = 'bi') {
   const listText = sectionText(sections, 'problem_list') || problemsToText(problems)
   const planText = sectionText(sections, 'plan_text') || planToText(plan, problems)
   const clinical = sectionText(sections, 'clinical')
@@ -103,7 +165,7 @@ export function buildSheetFromData({ problems = [], plan = [], sections = [] }) 
     .split(/,\s*(?![^(]*\))/).map((x) => x.replace(/\.$/, '').trim()).filter(Boolean)
     .map((name) => ({ name, use: '', status: '' }))
   const parsedProblems = parseProblems(listText)
-  const parsedPlan = parsePlan(planText)
+  const parsedPlan = parsePlan(planText, lang)
   return {
     allergy: '',
     family_history: line(/^-?\s*Family history/i),
@@ -129,7 +191,7 @@ export function normalizeSheet(s) {
     plan: arr(s.plan).map((g) => ({
       problem: Number(g.problem) || 0,
       items: arr(g.items).map((i) => ({
-        type: i.type || 'อื่น ๆ', action: i.action || '', target: i.target || '', follow_up: i.follow_up || '',
+        type: i.type || '', action: i.action || '', target: i.target || '', follow_up: i.follow_up || '',
       })),
     })),
     followup: arr(s.followup).map((f) => ({ when: f.when || '', item: f.item || '', problems: arr(f.problems).map(Number).filter(Boolean) })),

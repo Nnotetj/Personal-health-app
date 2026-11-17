@@ -5,7 +5,7 @@
 // mode "extract": free-text findings  -> { findings[], problems[], plan[] }
 // mode "summary": structured profile  -> patient-friendly 1-page content (th | en)
 // mode "translate": saved English summary -> plain-language Thai (same structure)
-// mode "sheet": doctor-approved profile -> bilingual (TH + EN terms) Personal Health Profile sheet
+// mode "sheet": doctor-approved profile -> Personal Health Profile sheet (language: bi = TH + EN terms | en | th)
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -277,34 +277,62 @@ const SUMMARY_SCHEMA = {
 };
 
 
-const SHEET_SYSTEM = `You fill in a bilingual "Personal Health Profile" form (Problem List and Plan of Management) from a
-doctor-approved profile. The reader is a Thai patient and other Thai doctors. The doctor will edit it.
+type SheetLang = "bi" | "en" | "th";
 
-Language style (follow exactly)
+const sheetSystem = (lang: SheetLang) => {
+  const style = {
+    bi: `Language style (follow exactly)
 - Thai first, written naturally and politely. KEEP English for drug names, test names, abbreviations, diagnoses and numbers
-  (e.g. "Carotid plaque, CAC 4, LDL 181, ApoB 137"). Do not translate drug brand/generic names.
+  (e.g. "Carotid plaque, CAC 4, LDL 181, ApoB 137"). Do not translate drug brand/generic names.`,
+    th: `Language style (follow exactly)
+- Everything in natural, polite Thai. KEEP English only for drug names, test names, abbreviations and numbers
+  (e.g. "Carotid plaque, CAC 4, LDL 181"). "title_en" stays the exact English title from the profile; "title_th" is its Thai translation.`,
+    en: `Language style (follow exactly)
+- Everything in clear, professional English for an international patient and their doctors. No Thai characters anywhere.
+  Keep drug names, test names and numbers as they are. Leave "title_th" as an empty string.`,
+  }[lang];
+  const fields = {
+    bi: `- "allergy": drug allergy in Thai ("ปฏิเสธ" for none, or the allergen). "" if not stated.
+- "family_history": Thai with English terms in parentheses when helpful, e.g. "โรคหลอดเลือดสมอง (stroke); มะเร็งเต้านมในอายุน้อย (early breast cancer)".
+- "medications": "use" = dose and indication in Thai (e.g. "12.5 mg · ภาวะก่อนเบาหวาน / ควบคุมน้ำหนัก"); "status" in Thai (e.g. "ใช้อยู่", "ใช้ไม่สม่ำเสมอ", "เริ่มแล้ว", "เริ่มใหม่ตามแผน").
+- "problems": "title_th" = Thai translation; "evidence" = Thai supporting data with key numbers and why it matters, 1-3 short clauses.
+- "plan" items "type" must be one of: ยา, อาหารเสริม, โภชนาการ, วิถีชีวิต, ตรวจติดตาม, ส่งต่อ, อื่น ๆ. Other item fields in Thai (English terms kept).
+  "follow_up" e.g. "ตรวจ lipid panel ซ้ำใน 8–12 สัปดาห์", "ต่อเนื่อง".
+- "followup": "when" = short Thai period (e.g. "4–6 สัปดาห์", "3 เดือน", "ทุกปี"); "item" in Thai with English terms.`,
+    th: `- "allergy": drug allergy in Thai ("ปฏิเสธ" for none, or the allergen). "" if not stated.
+- "family_history": Thai.
+- "medications": "use" = dose and indication in Thai; "status" in Thai (e.g. "ใช้อยู่", "ใช้ไม่สม่ำเสมอ", "เริ่มแล้ว", "เริ่มใหม่ตามแผน").
+- "problems": "title_th" = Thai translation; "evidence" = Thai supporting data with key numbers, 1-3 short clauses.
+- "plan" items "type" must be one of: ยา, อาหารเสริม, โภชนาการ, วิถีชีวิต, ตรวจติดตาม, ส่งต่อ, อื่น ๆ. Other item fields in Thai.
+- "followup": "when" = short Thai period (e.g. "4–6 สัปดาห์", "3 เดือน", "ทุกปี"); "item" in Thai.`,
+    en: `- "allergy": drug allergy ("None reported" if the profile says none, or the allergen). "" if not stated.
+- "family_history": English.
+- "medications": "use" = dose and indication in English; "status" in English (e.g. "Taking", "Taking irregularly", "Started", "Newly started per plan").
+- "problems": "title_en" = exact English title; "title_th" = ""; "evidence" = English supporting data with key numbers, 1-3 short clauses.
+- "plan" items "type" must be one of: Medication, Supplement, Nutrition, Lifestyle, Follow-up test, Referral, Other. Other item fields in English.
+  "follow_up" e.g. "Repeat lipid panel in 8–12 weeks", "Ongoing".
+- "followup": "when" = short English period (e.g. "4–6 weeks", "3 months", "Yearly"); "item" in English.`,
+  }[lang];
+  return `You fill in a "Personal Health Profile" form (Problem List and Plan of Management) from a
+doctor-approved profile. The reader is a patient and their doctors. The doctor will edit it.
+
+${style}
 - Source only: never invent diagnoses, drugs, doses, numbers, targets or dates that are not in the profile.
   If something is not in the profile, leave the string empty ("") rather than guess.
 
 Fields
-- "allergy": drug allergy from the profile in Thai ("ปฏิเสธ" for none, or the allergen). "" if not stated.
-- "family_history": Thai with English terms in parentheses when helpful, e.g. "โรคหลอดเลือดสมอง (stroke); มะเร็งเต้านมในอายุน้อย (early breast cancer)".
-- "medications": current drugs and supplements. Each: "name" (generic name, brand in parentheses if given),
-  "use" (dose and indication in Thai, e.g. "12.5 mg · ภาวะก่อนเบาหวาน / ควบคุมน้ำหนัก"),
-  "status" in Thai (e.g. "ใช้อยู่", "ใช้ไม่สม่ำเสมอ", "เริ่มแล้ว", "เริ่มใหม่ตามแผน").
-- "problems": copy the profile's ranked problem list, same order. Each: "title_en" (exact English title, without the
-  priority word), "title_th" (Thai translation, English terms allowed), "level" high | medium | low
-  (from the priority word in the list), "evidence" (Thai supporting data: the key numbers and why it matters, 1-3 short clauses).
-- "plan": plan of management grouped by problem. Each group: "problem" = problem number (1, 2, 3...) or 0 for general plans;
-  "items": each {"type", "action", "target", "follow_up"} in Thai (English terms kept).
-  "type" must be one of: ยา, อาหารเสริม, โภชนาการ, วิถีชีวิต, ตรวจติดตาม, ส่งต่อ, อื่น ๆ.
-  "target" = the measurable goal (e.g. "LDL-C < 70 mg/dL"); "follow_up" = when to recheck (e.g. "ตรวจ lipid panel ซ้ำใน 8–12 สัปดาห์", "ต่อเนื่อง").
+${fields}
+- "family_history", "allergy" and "medications" come from the profile's clinical section / background.
+- "medications": current drugs and supplements; "name" = generic name, brand in parentheses if given.
+- "problems": copy the profile's ranked problem list, same order; "level" high | medium | low (from the priority word).
+- "plan": grouped by problem. Each group: "problem" = problem number (1, 2, 3...) or 0 for general plans;
+  each item {"type", "action", "target", "follow_up"}; "target" = the measurable goal (e.g. "LDL-C < 70 mg/dL").
   Every action in the profile's plan must appear exactly once.
-- "followup": the combined follow-up schedule built from the plan items that have a time or recheck, sorted from soonest to latest.
-  Each: "when" (short Thai period, e.g. "4–6 สัปดาห์", "3 เดือน", "ทุกปี"), "item" (what to do/test, Thai with English terms),
-  "problems" (array of problem numbers it relates to; [] if general). Merge items with the same period.
+- "followup": the combined follow-up schedule built from plan items that have a time or recheck, sorted soonest to latest.
+  Each has "problems" = array of related problem numbers ([] if general). Merge items with the same period.
 
 Return the result by calling the submit_result tool.`;
+};
 
 const SHEET_SCHEMA = {
   type: "object",
@@ -501,7 +529,8 @@ Deno.serve(async (req) => {
     }
     if (body.mode === "sheet") {
       if (!body.profile || typeof body.profile !== "object") return json({ error: "ไม่มีข้อมูลโปรไฟล์" }, 400);
-      return json(await callClaude(SHEET_SYSTEM, `Doctor-approved profile:\n${JSON.stringify(body.profile)}`, SHEET_SCHEMA, deadline));
+      const lang: SheetLang = body.language === "en" ? "en" : body.language === "th" ? "th" : "bi";
+      return json(await callClaude(sheetSystem(lang), `Doctor-approved profile:\n${JSON.stringify(body.profile)}`, SHEET_SCHEMA, deadline));
     }
     if (body.mode === "translate") {
       if (!body.content || typeof body.content !== "object") return json({ error: "ไม่มีฉบับอังกฤษให้แปล" }, 400);
