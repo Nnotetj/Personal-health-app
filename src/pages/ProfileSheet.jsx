@@ -47,6 +47,14 @@ export default function ProfileSheet() {
     })()
   }, [visitId])
 
+  // ขอบกระดาษ A4 เฉพาะหน้านี้ (ไม่ใช้ named page เพราะบังคับขึ้นหน้าใหม่และทำให้เกิดหน้าว่างท้ายเอกสาร)
+  useEffect(() => {
+    const st = document.createElement('style')
+    st.textContent = '@page { size: A4; margin: 14mm 15mm; }'
+    document.head.appendChild(st)
+    return () => st.remove()
+  }, [])
+
   // ฉบับที่ยังไม่เคยบันทึกในภาษานี้ ให้เริ่มจากโปรไฟล์ตรง ๆ
   useEffect(() => {
     if (data && !sheets[lang]) setSheets((s) => ({ ...s, [lang]: buildSheetFromData(data, lang) }))
@@ -87,6 +95,11 @@ export default function ProfileSheet() {
   const age = patient.dob ? ageFrom(patient.dob, visit.visit_date) : ''
   const types = planTypes(lang)
   const titleOf = (p) => (lang === 'th' ? (p.title_th || p.title_en) : p.title_en)
+  // ปัญหาที่เกี่ยวข้อง: แสดงชื่อปัญหาเลย (ไม่ใช่เลขข้อ)
+  // ถ้าแพทย์พิมพ์เอง (related_text) ใช้ข้อความนั้น ไม่เช่นนั้นดึงชื่อจากเลขข้อ
+  const relatedTitles = (f) => (typeof f.related_text === 'string'
+    ? f.related_text.split('\n').map((x) => x.trim()).filter(Boolean)
+    : f.problems.map((n) => sheet.problems[n - 1]).filter(Boolean).map(titleOf))
 
   // ข้อความที่แก้ไขได้: โหมดดู = ข้อความ, โหมดแก้ = ช่องกรอก
   const E = ({ path, value, multi, placeholder }) => edit
@@ -267,9 +280,14 @@ export default function ProfileSheet() {
                 <td><strong><E path={['followup', i, 'when']} value={f.when} /></strong></td>
                 <td><E path={['followup', i, 'item']} value={f.item} multi /></td>
                 <td>{edit
-                  ? <input className="ps-in" defaultValue={f.problems.join(', ')} placeholder="1, 3"
-                    onBlur={(e) => upd(['followup', i, 'problems'], e.target.value.split(/[,\s]+/).map(Number).filter(Boolean))} />
-                  : (f.problems.length ? `${L.item} ${f.problems.join(', ')}` : L.generalRef)}
+                  ? <>
+                    <textarea className="ps-in" rows={2} defaultValue={relatedTitles(f).join('\n')} placeholder="พิมพ์ชื่อปัญหาเอง (1 บรรทัดต่อ 1 ปัญหา)"
+                      onBlur={(e) => upd(['followup', i, 'related_text'], e.target.value)} />
+                    <small className="muted">พิมพ์ชื่อปัญหาได้เอง เว้นว่าง = ทั่วไป</small>
+                  </>
+                  : (relatedTitles(f).length
+                    ? relatedTitles(f).map((t, k) => <div key={k}>{t}</div>)
+                    : L.generalRef)}
                   <Del onClick={() => rm('followup', i)} /></td>
               </tr>
             ))}

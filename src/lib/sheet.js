@@ -5,7 +5,7 @@
 //   medications: [{ name, use, status }],
 //   problems:    [{ title_en, title_th, level: 'high'|'medium'|'low', evidence }],
 //   plan:        [{ problem: n | 0, items: [{ type, action, target, follow_up }] }],   // n = ลำดับใน problems (เริ่มที่ 1), 0 = ทั่วไป
-//   followup:    [{ when, item, problems: [n...] }]
+//   followup:    [{ when, item, problems: [n...], related_text?: string }]   // related_text = ข้อความที่แพทย์พิมพ์เอง (ถ้ามีจะใช้แทนชื่อจาก problems)
 // }
 import { DOMAINS, planToText, problemsToText } from './constants'
 
@@ -194,7 +194,11 @@ export function normalizeSheet(s) {
         type: i.type || '', action: i.action || '', target: i.target || '', follow_up: i.follow_up || '',
       })),
     })),
-    followup: arr(s.followup).map((f) => ({ when: f.when || '', item: f.item || '', problems: arr(f.problems).map(Number).filter(Boolean) })),
+    followup: arr(s.followup).map((f) => ({
+      when: f.when || '', item: f.item || '', problems: arr(f.problems).map(Number).filter(Boolean),
+      // ถ้าแพทย์พิมพ์ชื่อปัญหาเอง (string) จะใช้ข้อความนั้นแทนชื่อที่ดึงจากเลขข้อ
+      ...(typeof f.related_text === 'string' ? { related_text: f.related_text } : {}),
+    })),
   }
 }
 
