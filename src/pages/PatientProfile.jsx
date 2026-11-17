@@ -227,7 +227,8 @@ export default function PatientProfile() {
 
               <div className="side-actions">
                 {canEdit && <Link className="btn-quiet" to={`/visits/${visitId}/edit`}>แก้ไขผลตรวจครั้งนี้</Link>}
-                <Link className="btn" to={`/visits/${visitId}/summary`}>สรุป 1 หน้าให้คนไข้</Link>
+                <Link className="btn" to={`/visits/${visitId}/sheet`}>Personal Health Profile (ไทย + English)</Link>
+                <Link className="btn-quiet" to={`/visits/${visitId}/summary`}>สรุป 1 หน้าให้คนไข้</Link>
               </div>
             </aside>
           </div>

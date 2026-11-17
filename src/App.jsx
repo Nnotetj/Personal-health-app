@@ -4,6 +4,7 @@ import { supabase, CLINIC_NAME } from './lib/supabase'
 import Login from './pages/Login'
 import Patients from './pages/Patients'
 import PatientProfile from './pages/PatientProfile'
+import ProfileSheet from './pages/ProfileSheet'
 import VisitEditor from './pages/VisitEditor'
 import Summary from './pages/Summary'
 import Admin from './pages/Admin'
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/patients/:id/visits/new" element={<VisitEditor />} />
           <Route path="/visits/:visitId/edit" element={<VisitEditor />} />
           <Route path="/visits/:visitId/summary" element={<Summary />} />
+          <Route path="/visits/:visitId/sheet" element={<ProfileSheet />} />
           {profile.role === 'admin' && <Route path="/admin" element={<Admin />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -57,7 +59,7 @@ export default function App() {
 function Shell({ children }) {
   const { profile } = useAuth()
   const loc = useLocation()
-  const printMode = loc.pathname.endsWith('/summary')
+  const printMode = loc.pathname.endsWith('/summary') || loc.pathname.endsWith('/sheet')
   return (
     <div className={printMode ? 'shell shell-print' : 'shell'}>
       <header className="topbar no-print">

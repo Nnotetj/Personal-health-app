@@ -4,6 +4,8 @@
 //
 // mode "extract": free-text findings  -> { findings[], problems[], plan[] }
 // mode "summary": structured profile  -> patient-friendly 1-page content (th | en)
+// mode "translate": saved English summary -> plain-language Thai (same structure)
+// mode "sheet": doctor-approved profile -> bilingual (TH + EN terms) Personal Health Profile sheet
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -65,12 +67,14 @@ clinical, functional, biomarker, imaging, multiomic.
 "problem_list" (inside sections): 2 to 6 items ranked by importance for proactive prevention. Each item is ONE line:
   "<n>. <problem title> (High|Medium|Low) — <1-2 sentence detail with the supporting findings and why it matters>"
   e.g. "1. Iron-deficiency anemia secondary to menorrhagia (High) — Hb 10.5 g/dL, MCV 74, ferritin 8 ng/mL with 7-day heavy menses."
-"plan_text" (inside sections): 3 to 10 items, ONE line each, grouped in problem order:
-  "[#<problem number>] <Domain>: <action> | Target: <target> | <timeframe>"
-  Use "[General]" instead of "[#n]" for plans not tied to one problem. Domain is a plain word such as
-  Nutrition, Exercise, Sleep, Stress, Supplement, Medication, Follow-up test, Referral, Lifestyle.
-  e.g. "[#1] Supplement: Start oral iron (ferrous fumarate) | Target: ferritin >30 ng/mL | Recheck CBC and ferritin in 8-12 weeks"
-problem_list and plan_text do not count toward the 500-word limit and have no "สรุป:" line.
+"plan_groups" (inside sections): the plan of management, grouped by problem. 3 to 10 actions in total.
+  Each group: "problem" = the problem number from problem_list (1, 2, 3...), or 0 for general plans
+  not tied to one problem; "items" = actions, ONE line each:
+  "<Domain>: <action> | Target: <target> | <timeframe>"
+  Domain is a plain word such as Nutrition, Exercise, Sleep, Stress, Supplement, Medication,
+  Follow-up test, Referral, Lifestyle. Do NOT write the problem title; the app adds it.
+  e.g. {"problem": 1, "items": ["Supplement: Start oral iron (ferrous fumarate) | Target: ferritin >30 ng/mL | Recheck CBC and ferritin in 8-12 weeks"]}
+problem_list and plan_groups do not count toward the 500-word limit and have no "สรุป:" line.
 
 FORMAT EXAMPLE (style only; never copy these findings into another patient)
 Note (excerpt):
@@ -105,12 +109,19 @@ Language: ${lang === "th"
   : "plain, warm English a non-medical adult understands. Avoid medical jargon and abbreviations; explain unavoidable terms simply (e.g. a small old 'silent stroke')."}
 
 Source: the doctor-approved profile provided. Never add diagnoses, numbers, tests or treatments that are not in it.
+The profile's sections.problem_list is the ranked problem list and sections.plan_text is the doctor's plan
+(grouped under "<n>. <problem title>" headings, with a "General" group for plans not tied to one problem). Build each theme's "plan" from these plan lines,
+rewritten in everyday language, and put follow-up tests and referrals in "follow_up". Every plan line must
+appear somewhere; never leave a theme's plan empty when the doctor wrote a plan for it.
 
-Length: the WHOLE text must be at most 500 words (Thai: similar length). Use only a few meaningful numbers
-(e.g. body fat about 32%, stress 8/10, biological age about 43 vs actual age about 50); skip lab units and reference ranges.
+Length: the WHOLE text must be at most 450 words (Thai: similar length) so it fits one A4 page. Word budget:
+intro ≤ 45 words; each theme body ≤ 55 words in total (1-2 short paragraphs); each plan item ≤ 12 words and at most 3 items per theme; each follow-up item ≤ 10 words;
+each goal ≤ 15 words; follow_up ≤ 25 words; closing ≤ 20 words. Cut repetition and background detail first.
+Use only a few meaningful numbers (e.g. body fat about 32%, stress 8/10, biological age about 43 vs actual
+age about 50); skip lab units and reference ranges.
 
 MECE structure
-- Group everything into 4 to 6 themes by what matters to the patient's life, e.g. heart, brain & blood vessels;
+- Group everything into 4 to 5 themes (never more than 5; merge minor items) by what matters to the patient's life, e.g. heart, brain & blood vessels;
   weight, muscle & metabolism; nutrition, gut & energy; stress, mood & recovery; healthy aging & genetics.
 - Mutually exclusive: each finding appears in ONE theme only; do not repeat it in another theme.
 - Collectively exhaustive: every important finding or concern in the profile has a place. Items that only
@@ -119,11 +130,14 @@ MECE structure
 
 Content
 - "intro": 2-3 sentences. Start with the reassuring findings, then name the main focus areas.
-- Each theme: "title"; "body" = 1 to 3 short paragraphs (what was found, what it means, reassuring points,
-  what raises the risk); "plan" = ONE sentence of practical actions, or "" when the theme is information only
-  (e.g. genetics). Genetic results show risk, not certainty — say so.
+- Each theme: "title"; "body" = 1 to 2 short paragraphs (what was found, what it means, reassuring points,
+  what raises the risk); "plan" = 1 to 3 items, each {"action": what to do in everyday words (≤ 12 words),
+  "when": short timing such as "ภายใน 4 สัปดาห์" / "within 4 weeks" / "3–6 months" / "ongoing"}.
+  Use an empty list when the theme is information only (e.g. genetics). Referrals and treatment steps stay
+  in the theme's plan. Genetic results show risk, not certainty — say so.
 - "goals": exactly 3 items with labels ${lang === "th" ? '"อันดับแรก", "อันดับสอง", "อันดับสาม"' : '"First", "Second", "Third"'}, one short action-focused sentence each.
-- "follow_up": one sentence listing what will be monitored.
+- "follow_up": the repeat tests / re-checks only, as items {"what": plain-language test (≤ 10 words), "when": timing},
+  sorted from soonest to latest. Do NOT repeat actions already listed in a theme's plan.
 - "closing": one encouraging sentence.
 - Be honest and encouraging, never alarming. No bullet characters inside strings.
 
@@ -131,15 +145,69 @@ STYLE EXAMPLE (English, excerpt; never copy these findings into another patient)
 intro: "Your health check shows a mix of good protective factors and a few important areas that need attention. The good news is that your heart pumping function is normal, your coronary calcium score is 0, your omega-3 level is good, and your biological age is younger than your actual age. However, your blood vessels, body composition, liver, lifestyle and stress level should become the main focus of your health plan."
 theme: title "Heart, Brain & Blood Vessel Health — Highest Priority"
   body ["You have high cholesterol, early plaque in the neck arteries, and a small old 'silent stroke' seen on brain imaging, even though you have never had obvious stroke symptoms. Your heart ultrasound is normal and no calcium buildup was found in the coronary arteries, which is reassuring.", "However, because you smoke about 20 cigarettes per day, your overall blood vessel risk is still significant."]
-  plan "Continue cholesterol treatment, stop smoking, monitor blood pressure and metabolic risk, exercise regularly, and follow a heart-healthy diet."
+  plan [{"action": "Continue cholesterol treatment", "when": "ongoing"}, {"action": "Stop smoking with support from the clinic", "when": "start now"}, {"action": "See a heart specialist about the neck artery plaque", "when": "within 3 months"}]
 theme: title "Healthy Aging & Genetics"
   body ["Your biological age is about 43 years compared with an actual age of about 50, which is encouraging. However, your lung and musculoskeletal aging scores are less favorable.", "Genetic testing suggests higher susceptibility to some cardiovascular, metabolic, neurological and cancer-related conditions, but these results show risk, not certainty."]
-  plan ""
+  plan []
 goals: First "Protect your heart and brain by stopping smoking and controlling cholesterol." / Second "Reduce abdominal fat and build muscle." / Third "Improve liver, gut, nutrition, stress and sleep."
-follow_up: "Thyroid nodule, brain and blood vessels, bone health, and metabolic health."
+follow_up: [{"what": "Repeat cholesterol blood test", "when": "3 months"}, {"what": "Thyroid ultrasound", "when": "6 months"}, {"what": "Repeat neck artery scan", "when": "12 months"}]
 closing: "Your strongest opportunity is to turn good biological-aging potential into better long-term health by improving the modifiable risks that matter most."
 
 Return the result by calling the submit_result tool.`;
+
+const TRANSLATE_SYSTEM = `You turn a doctor-approved English patient health summary into Thai for a patient who is NOT medically trained.
+
+Rules
+- Everyday, polite spoken-style Thai (ภาษาไทยที่เข้าใจง่าย สุภาพ). Do not translate word by word; rewrite so it reads naturally.
+- Keep the MAIN IDEA of every part exactly. Do not add, remove, merge or reorder themes, goals or findings.
+  Keep the same number of themes, body paragraphs and goals, in the same order.
+- Keep important numbers (e.g. วิตามินดี 24, T-score -2.1, ไขมันในร่างกาย 32%) but drop units and reference ranges
+  unless they help understanding.
+- Replace medical terms and English abbreviations with plain Thai explanations, e.g.
+  "Subclinical hypothyroidism" -> "ไทรอยด์เริ่มทำงานช้าลงเล็กน้อย"; "Osteopenia" -> "มวลกระดูกเริ่มบาง";
+  "anti-TPO" -> "ภูมิคุ้มกันที่มีต่อต่อมไทรอยด์". Keep an English term in parentheses only when the patient
+  may hear it from other doctors.
+- Drop priority labels such as "(High)"/"(Medium)" from titles; the order already shows importance.
+  Keep a phrase like "— สำคัญที่สุด" only if the English title has "Highest Priority".
+- Be SHORTER than the English: each body paragraph 1-2 short sentences; each plan one short sentence.
+- Keep the same number of plan items and follow-up items, in the same order; translate "when" into short Thai
+  (e.g. "within 4 weeks" -> "ภายใน 4 สัปดาห์", "ongoing" -> "ทำต่อเนื่อง").
+- Goal labels must be "อันดับแรก", "อันดับสอง", "อันดับสาม" in the same order.
+- Warm and encouraging, never alarming. Empty fields stay empty.
+
+Return the result by calling the submit_result tool.`;
+
+const WORD_LIMIT = 500;
+
+// นับคำ (รองรับภาษาไทยที่ไม่มีช่องว่าง) — ใช้วิธีเดียวกับหน้าเว็บ
+function countWords(c: any): number {
+  const list = (v: any, a: string, b: string) => (Array.isArray(v) ? v.flatMap((x: any) => [x?.[a], x?.[b]]) : [v]);
+  const text = [c?.intro, ...(c?.themes ?? []).flatMap((x: any) => [x.title, ...(x.body ?? []), ...list(x.plan, "action", "when")]),
+    ...(c?.goals ?? []).map((g: any) => g.text), ...list(c?.follow_up, "what", "when"), c?.closing].filter(Boolean).join(" ");
+  let n = 0;
+  for (const seg of new Intl.Segmenter(undefined, { granularity: "word" }).segment(text)) if (seg.isWordLike) n++;
+  return n;
+}
+
+const SHORTEN_SYSTEM = `You shorten a patient health summary so it fits one A4 page.
+Target: at most 430 words in total (Thai: similar length). Keep the same language, the same themes in the same
+order, the same goals, and every main idea. Keep plan and follow-up items as short list items (you may drop the
+least important plan item if a theme has 3). Remove repetition, background detail and extra examples;
+make sentences shorter. Do not add anything new.
+Return the result by calling the submit_result tool.`;
+
+// ถ้ายาวเกิน ให้ AI ย่ออีก 1 รอบ
+async function withinLimit(content: any, deadline: number) {
+  const n = countWords(content);
+  if (n <= WORD_LIMIT) return content;
+  console.error(`Summary ${n} words, shortening`);
+  try {
+    return await callClaude(SHORTEN_SYSTEM, `Summary (${n} words, JSON):\n${JSON.stringify(content)}`, SUMMARY_SCHEMA, deadline);
+  } catch (e) {
+    console.error("Shorten failed, returning long version", String((e as Error).message));
+    return content;
+  }
+}
 
 // ---------- รูปแบบข้อมูลที่บังคับให้ AI ส่งกลับ ----------
 const str = { type: "string" };
@@ -156,9 +224,17 @@ const EXTRACT_SCHEMA = {
       type: "object",
       properties: {
         clinical: strArr, functional: strArr, biomarker: strArr, imaging: strArr, multiomic: strArr,
-        integrated: str, problem_list: strArr, plan_text: strArr,
+        integrated: str, problem_list: strArr,
+        plan_groups: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: { problem: { type: "integer" }, items: strArr },
+            required: ["problem", "items"],
+          },
+        },
       },
-      required: ["clinical", "functional", "biomarker", "imaging", "multiomic", "integrated", "problem_list", "plan_text"],
+      required: ["clinical", "functional", "biomarker", "imaging", "multiomic", "integrated", "problem_list", "plan_groups"],
     },
     key_values: {
       type: "array",
@@ -183,7 +259,10 @@ const SUMMARY_SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        properties: { title: str, body: strArr, plan: str },
+        properties: {
+          title: str, body: strArr,
+          plan: { type: "array", items: { type: "object", properties: { action: str, when: str }, required: ["action", "when"] } },
+        },
         required: ["title", "body", "plan"],
       },
     },
@@ -191,10 +270,83 @@ const SUMMARY_SCHEMA = {
       type: "array",
       items: { type: "object", properties: { label: str, text: str }, required: ["label", "text"] },
     },
-    follow_up: str,
+    follow_up: { type: "array", items: { type: "object", properties: { what: str, when: str }, required: ["what", "when"] } },
     closing: str,
   },
   required: ["intro", "themes", "goals", "follow_up", "closing"],
+};
+
+
+const SHEET_SYSTEM = `You fill in a bilingual "Personal Health Profile" form (Problem List and Plan of Management) from a
+doctor-approved profile. The reader is a Thai patient and other Thai doctors. The doctor will edit it.
+
+Language style (follow exactly)
+- Thai first, written naturally and politely. KEEP English for drug names, test names, abbreviations, diagnoses and numbers
+  (e.g. "Carotid plaque, CAC 4, LDL 181, ApoB 137"). Do not translate drug brand/generic names.
+- Source only: never invent diagnoses, drugs, doses, numbers, targets or dates that are not in the profile.
+  If something is not in the profile, leave the string empty ("") rather than guess.
+
+Fields
+- "allergy": drug allergy from the profile in Thai ("ปฏิเสธ" for none, or the allergen). "" if not stated.
+- "family_history": Thai with English terms in parentheses when helpful, e.g. "โรคหลอดเลือดสมอง (stroke); มะเร็งเต้านมในอายุน้อย (early breast cancer)".
+- "medications": current drugs and supplements. Each: "name" (generic name, brand in parentheses if given),
+  "use" (dose and indication in Thai, e.g. "12.5 mg · ภาวะก่อนเบาหวาน / ควบคุมน้ำหนัก"),
+  "status" in Thai (e.g. "ใช้อยู่", "ใช้ไม่สม่ำเสมอ", "เริ่มแล้ว", "เริ่มใหม่ตามแผน").
+- "problems": copy the profile's ranked problem list, same order. Each: "title_en" (exact English title, without the
+  priority word), "title_th" (Thai translation, English terms allowed), "level" high | medium | low
+  (from the priority word in the list), "evidence" (Thai supporting data: the key numbers and why it matters, 1-3 short clauses).
+- "plan": plan of management grouped by problem. Each group: "problem" = problem number (1, 2, 3...) or 0 for general plans;
+  "items": each {"type", "action", "target", "follow_up"} in Thai (English terms kept).
+  "type" must be one of: ยา, อาหารเสริม, โภชนาการ, วิถีชีวิต, ตรวจติดตาม, ส่งต่อ, อื่น ๆ.
+  "target" = the measurable goal (e.g. "LDL-C < 70 mg/dL"); "follow_up" = when to recheck (e.g. "ตรวจ lipid panel ซ้ำใน 8–12 สัปดาห์", "ต่อเนื่อง").
+  Every action in the profile's plan must appear exactly once.
+- "followup": the combined follow-up schedule built from the plan items that have a time or recheck, sorted from soonest to latest.
+  Each: "when" (short Thai period, e.g. "4–6 สัปดาห์", "3 เดือน", "ทุกปี"), "item" (what to do/test, Thai with English terms),
+  "problems" (array of problem numbers it relates to; [] if general). Merge items with the same period.
+
+Return the result by calling the submit_result tool.`;
+
+const SHEET_SCHEMA = {
+  type: "object",
+  properties: {
+    allergy: str,
+    family_history: str,
+    medications: {
+      type: "array",
+      items: { type: "object", properties: { name: str, use: str, status: str }, required: ["name", "use", "status"] },
+    },
+    problems: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { title_en: str, title_th: str, level: { type: "string", enum: ["high", "medium", "low"] }, evidence: str },
+        required: ["title_en", "title_th", "level", "evidence"],
+      },
+    },
+    plan: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          problem: { type: "integer" },
+          items: {
+            type: "array",
+            items: { type: "object", properties: { type: str, action: str, target: str, follow_up: str }, required: ["type", "action", "target", "follow_up"] },
+          },
+        },
+        required: ["problem", "items"],
+      },
+    },
+    followup: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { when: str, item: str, problems: { type: "array", items: { type: "integer" } } },
+        required: ["when", "item", "problems"],
+      },
+    },
+  },
+  required: ["allergy", "family_history", "medications", "problems", "plan", "followup"],
 };
 
 function json(body: unknown, status = 200) {
@@ -295,10 +447,30 @@ Deno.serve(async (req) => {
         for (const p of out?.problems ?? []) if (!["high", "medium", "low"].includes(p.priority)) p.priority = "medium";
         for (const v of out?.key_values ?? []) if (!FLAGS.includes(v.flag)) v.flag = "normal";
         const sec = out?.sections ?? {};
+        // สร้าง Plan ใต้หัวข้อปัญหา โดยดึงชื่อปัญหาจาก problem_list (เลขและชื่อตรงกันเสมอ)
+        if (Array.isArray(sec.plan_groups)) {
+          const titles = (Array.isArray(sec.problem_list) ? sec.problem_list : []).map((l: string) => {
+            const m = String(l).match(/^\s*(\d+)[.)]\s*(.*)$/);
+            const rest = m ? m[2] : String(l);
+            return rest.split(" — ")[0].replace(/\s*\((High|Medium|Low)\)\s*$/i, "").trim();
+          });
+          const groups = [...sec.plan_groups]
+            .filter((g: any) => Array.isArray(g.items) && g.items.length)
+            .sort((x: any, y: any) => (x.problem || 999) - (y.problem || 999));
+          const merged = new Map<number, string[]>();
+          for (const g of groups) {
+            const n = titles[g.problem - 1] ? g.problem : 0;
+            merged.set(n, [...(merged.get(n) ?? []), ...g.items]);
+          }
+          sec.plan_text = [...merged.entries()]
+            .map(([n, items]) => [n ? `${n}. ${titles[n - 1]}` : "General", ...items.map((i) => `- ${i}`)].join("\n"))
+            .join("\n\n");
+          delete sec.plan_groups;
+        }
         for (const k of Object.keys(sec)) {
           if (!Array.isArray(sec[k])) continue;
           // ปัญหาและแผนมีเลขลำดับอยู่แล้ว ไม่ต้องใส่ bullet
-          sec[k] = (k === "problem_list" || k === "plan_text")
+          sec[k] = (k === "problem_list")
             ? sec[k].join("\n")
             : sec[k].map((l: string) => (String(l).startsWith("สรุป") ? l : `- ${l}`)).join("\n");
         }
@@ -319,7 +491,7 @@ Deno.serve(async (req) => {
         });
         const [a, b] = await Promise.all([
           callClaude(only("clinical, functional, biomarker", 'Return "key_values" as usual.'), prompt, EXTRACT_SCHEMA, deadline),
-          callClaude(only("imaging, multiomic, integrated, problem_list, plan_text", "Return key_values as usual. integrated, problem_list and plan_text cover the WHOLE check-up."), prompt, EXTRACT_SCHEMA, deadline),
+          callClaude(only("imaging, multiomic, integrated, problem_list, plan_groups", "Return key_values as usual. integrated, problem_list and plan_groups cover the WHOLE check-up."), prompt, EXTRACT_SCHEMA, deadline),
         ]);
         return json(linesToText({
           sections: merge(a.sections, b.sections),
@@ -327,9 +499,19 @@ Deno.serve(async (req) => {
         }));
       }
     }
+    if (body.mode === "sheet") {
+      if (!body.profile || typeof body.profile !== "object") return json({ error: "ไม่มีข้อมูลโปรไฟล์" }, 400);
+      return json(await callClaude(SHEET_SYSTEM, `Doctor-approved profile:\n${JSON.stringify(body.profile)}`, SHEET_SCHEMA, deadline));
+    }
+    if (body.mode === "translate") {
+      if (!body.content || typeof body.content !== "object") return json({ error: "ไม่มีฉบับอังกฤษให้แปล" }, 400);
+      const th = await callClaude(TRANSLATE_SYSTEM, `English summary (JSON):\n${JSON.stringify(body.content)}`, SUMMARY_SCHEMA, deadline);
+      return json(await withinLimit(th, deadline));
+    }
     if (body.mode === "summary") {
       const lang = body.language === "en" ? "en" : "th";
-      return json(await callClaude(summarySystem(lang), `Doctor-approved profile:\n${JSON.stringify(body.profile)}`, SUMMARY_SCHEMA, deadline));
+      const draft = await callClaude(summarySystem(lang), `Doctor-approved profile:\n${JSON.stringify(body.profile)}`, SUMMARY_SCHEMA, deadline);
+      return json(await withinLimit(draft, deadline));
     }
     return json({ error: "Unknown mode" }, 400);
   } catch (e) {
