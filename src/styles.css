@@ -3,7 +3,7 @@
   --surface: #FFFFFF;
   --ink: #15283A;
   --ink-2: #4B5E71;
-  --ink-3: #7C8D9C;
+  --ink-3: #5E6D7B;
   --line: #D8E0E6;
   --line-2: #EBF0F3;
   --accent: #15283A;
@@ -11,7 +11,7 @@
   --c-conventional: #2A69AC;
   --c-multiomic: #7345AE;
   --c-functional: #1B8063;
-  --c-imaging: #AE681C;
+  --c-imaging: #A26019;
   --c-clinical: #B23A48;
   --c-integrated: #1F2A37;
 
@@ -19,7 +19,7 @@
   --bad-bg: #FBECEB;
   --warn: #9A6400;
   --warn-bg: #FDF4E1;
-  --ok: #1B8063;
+  --ok: #16715A;
   --ok-bg: #E6F4EF;
 
   --r-sm: 6px;
@@ -62,10 +62,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* brand mark: 4 category bars */
 .brand-mark { display: inline-flex; gap: 3px; align-items: flex-end; height: 18px; }
 .brand-mark i { width: 4px; border-radius: 2px; display: block; }
-.brand-mark i:nth-child(1) { height: 60%; background: var(--c-conventional); }
-.brand-mark i:nth-child(2) { height: 100%; background: var(--c-multiomic); }
-.brand-mark i:nth-child(3) { height: 75%; background: var(--c-functional); }
-.brand-mark i:nth-child(4) { height: 45%; background: var(--c-imaging); }
+.brand-mark i:nth-child(1) { height: 60%; background: var(--c-clinical); }
+.brand-mark i:nth-child(2) { height: 90%; background: var(--c-functional); }
+.brand-mark i:nth-child(3) { height: 100%; background: var(--c-conventional); }
+.brand-mark i:nth-child(4) { height: 75%; background: var(--c-imaging); }
+.brand-mark i:nth-child(5) { height: 45%; background: var(--c-multiomic); }
 .brand-mark.big { height: 36px; gap: 5px; }
 .brand-mark.big i { width: 8px; border-radius: 3px; }
 
@@ -241,7 +242,7 @@ select.flag-borderline { color: var(--warn); font-weight: 600; }
 .p-row { display: flex; gap: .6rem; padding: .6rem 0; border-bottom: 1px solid var(--line-2); border-left: 3px solid var(--line); padding-left: .5rem; }
 .p-row.prio-high { border-left-color: var(--bad); } .p-row.prio-medium { border-left-color: var(--warn); }
 .order { display: flex; flex-direction: column; align-items: center; gap: .1rem; font-weight: 600; }
-.order .btn-quiet { min-height: 26px; padding: 0 .4rem; border: 0; font-size: .7rem; }
+.order .btn-quiet { min-height: 28px; padding: 0 .4rem; border: 0; font-size: .7rem; }
 .p-fields { flex: 1; display: flex; flex-direction: column; gap: .4rem; }
 .inline { display: flex; gap: .4rem; flex-wrap: wrap; }
 .inline select { width: auto; }
@@ -452,7 +453,7 @@ textarea.sec-text { font-size: .92rem; line-height: 1.6; }
 .ps-line-sign { display: block; border-top: 1px solid #1c242f; margin-bottom: 1.5mm; }
 .ps-in { width: 100%; font-size: 9pt; padding: .8mm 1.5mm; }
 textarea.ps-in { resize: vertical; }
-.ps-del { margin-top: 1mm; padding: 0 .5rem; min-height: 22px; font-size: .7rem; }
+.ps-del { margin-top: 1mm; padding: 0 .6rem; min-height: 28px; font-size: .7rem; }
 @media print {
   .ps { width: auto; min-height: 0; padding: 0; box-shadow: none; margin: 0; }
   /* ลายเซ็นไม่ลอยอยู่หน้าเดียวโดด ๆ: ให้ติดไปกับแถวสุดท้ายของตารางนัด */

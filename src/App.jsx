@@ -64,7 +64,7 @@ function Shell({ children }) {
     <div className={printMode ? 'shell shell-print' : 'shell'}>
       <header className="topbar no-print">
         <NavLink to="/" className="brand">
-          <span className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></span>
+          <span className="brand-mark" aria-hidden="true"><i /><i /><i /><i /><i /></span>
           <span>{CLINIC_NAME}</span>
         </NavLink>
         <nav>
