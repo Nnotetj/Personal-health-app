@@ -36,7 +36,7 @@ export default function Login() {
         <label>อีเมล<input type="email" required autoComplete="email" value={form.email} onChange={set('email')} /></label>
         <label>รหัสผ่าน<input type="password" required minLength={8} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} value={form.password} onChange={set('password')} /></label>
 
-        {msg && <p className={msg.type === 'error' ? 'alert error' : 'alert ok'}>{msg.text}</p>}
+        {msg && <p role={msg.type === 'error' ? 'alert' : 'status'} className={msg.type === 'error' ? 'alert error' : 'alert ok'}>{msg.text}</p>}
 
         <button className="btn" disabled={busy}>{mode === 'signin' ? 'เข้าสู่ระบบ' : 'ลงทะเบียน'}</button>
         <button type="button" className="btn-quiet" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setMsg(null) }}>

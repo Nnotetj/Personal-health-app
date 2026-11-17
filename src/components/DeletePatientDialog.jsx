@@ -32,7 +32,7 @@ export default function DeletePatientDialog({ patient, onClose, onDeleted }) {
         พิมพ์ชื่อ “{fullName}” เพื่อยืนยัน
         <input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus />
       </label>
-      {err && <p className="alert error">{err}</p>}
+      {err && <p className="alert error" role="alert">{err}</p>}
       <div className="actions" style={{ justifyContent: 'flex-end', marginTop: '1rem' }}>
         <button className="btn-quiet" onClick={onClose} disabled={busy}>ยกเลิก</button>
         <button className="btn-quiet danger" onClick={remove} disabled={busy || typed.trim() !== fullName}>

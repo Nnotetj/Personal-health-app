@@ -107,17 +107,17 @@ export default function ProfileSheet() {
     : f.problems.map((n) => sheet.problems[n - 1]).filter(Boolean).map(shortOf))
 
   // ข้อความที่แก้ไขได้: โหมดดู = ข้อความ, โหมดแก้ = ช่องกรอก
-  const E = ({ path, value, multi, placeholder }) => edit
+  const E = ({ path, value, multi, placeholder, label }) => edit
     ? (multi
-      ? <textarea className="ps-in" rows={2} defaultValue={value} placeholder={placeholder} onBlur={(e) => upd(path, e.target.value)} />
-      : <input className="ps-in" defaultValue={value} placeholder={placeholder} onBlur={(e) => upd(path, e.target.value)} />)
+      ? <textarea className="ps-in" rows={2} aria-label={label || placeholder} defaultValue={value} placeholder={placeholder} onBlur={(e) => upd(path, e.target.value)} />
+      : <input className="ps-in" aria-label={label || placeholder} defaultValue={value} placeholder={placeholder} onBlur={(e) => upd(path, e.target.value)} />)
     : <>{value}</>
 
   // ช่องข้อมูลทั่วไป: ถ้าแพทย์แก้ไว้ใช้ค่าที่แก้ ไม่เช่นนั้นใช้ค่าจากระบบ (เช่น แก้ชื่อแพทย์เป็นอังกฤษในฉบับ English)
-  const H1 = ({ k, def }) => {
+  const H1 = ({ k, def, label }) => {
     const v = typeof sheet.header?.[k] === 'string' ? sheet.header[k] : def
     return edit
-      ? <input className="ps-in" defaultValue={v} onBlur={(e) => setSheet((s) => ({ ...s, header: { ...(s.header || {}), [k]: e.target.value } }))} />
+      ? <input className="ps-in" aria-label={label} defaultValue={v} onBlur={(e) => setSheet((s) => ({ ...s, header: { ...(s.header || {}), [k]: e.target.value } }))} />
       : <>{v}</>
   }
 
@@ -144,8 +144,8 @@ export default function ProfileSheet() {
   const rm = (key, i) => setSheet((s) => ({ ...s, [key]: s[key].filter((_, j) => j !== i) }))
 
   const Th = ({ children }) => <th>{children}</th>
-  const Del = ({ onClick }) => edit ? <button className="btn-quiet danger no-print ps-del" onClick={onClick}>ลบ</button> : null
-  const H = ({ pair, as: Tag = 'h2', className = 'ps-h' }) => <Tag className={className}>{pair[0]}{pair[1] && <> <small>{pair[1]}</small></>}</Tag>
+  const Del = ({ onClick, label }) => edit ? <button type="button" className="btn-quiet danger no-print ps-del" aria-label={label} onClick={onClick}>ลบ</button> : null
+  const H = ({ pair, as: Tag = 'h2', className = 'ps-h' }) => <Tag className={className}>{pair[0]}{pair[1] && <> <small lang={lang === 'bi' ? 'en' : undefined}>{pair[1]}</small></>}</Tag>
 
   const PlanTable = ({ n }) => {
     const gi = planGroup(n)
@@ -159,14 +159,14 @@ export default function ProfileSheet() {
             {items.map((it, ii) => (
               <tr key={ii}>
                 <td>{edit
-                  ? <select className="ps-in" value={it.type} onChange={(e) => upd(['plan', gi, 'items', ii, 'type'], e.target.value)}>
+                  ? <select className="ps-in" aria-label={L.planCols[0]} value={it.type} onChange={(e) => upd(['plan', gi, 'items', ii, 'type'], e.target.value)}>
                     {!types.includes(it.type) && <option value={it.type}>{it.type}</option>}
                     {types.map((t) => <option key={t}>{t}</option>)}
                   </select>
                   : it.type}</td>
-                <td><E path={['plan', gi, 'items', ii, 'action']} value={it.action} multi /></td>
-                <td><E path={['plan', gi, 'items', ii, 'target']} value={it.target} multi /></td>
-                <td><E path={['plan', gi, 'items', ii, 'follow_up']} value={it.follow_up} multi /><Del onClick={() => removePlanItem(gi, ii)} /></td>
+                <td><E path={['plan', gi, 'items', ii, 'action']} value={it.action} multi label={L.planCols[1]} /></td>
+                <td><E path={['plan', gi, 'items', ii, 'target']} value={it.target} multi label={L.planCols[2]} /></td>
+                <td><E path={['plan', gi, 'items', ii, 'follow_up']} value={it.follow_up} multi label={L.planCols[3]} /><Del label={`ลบแผนแถวที่ ${ii + 1}`} onClick={() => removePlanItem(gi, ii)} /></td>
               </tr>
             ))}
           </tbody>
@@ -180,9 +180,9 @@ export default function ProfileSheet() {
     <div className="summary-page">
       <div className="summary-tools no-print">
         <Link to={`/patients/${patient.id}`} className="back">กลับไปโปรไฟล์</Link>
-        <div className="seg" role="tablist" aria-label="ภาษาของเอกสาร">
+        <div className="seg" role="group" aria-label="ภาษาของเอกสาร">
           {DOC_LANGS.map((d) => (
-            <button key={d.key} role="tab" aria-selected={lang === d.key} className={lang === d.key ? 'on' : ''} onClick={() => switchLang(d.key)}>
+            <button key={d.key} type="button" aria-pressed={lang === d.key} className={lang === d.key ? 'on' : ''} onClick={() => switchLang(d.key)}>
               {d.label}{saved[d.key] ? ' ✓' : ''}
             </button>
           ))}
@@ -194,7 +194,7 @@ export default function ProfileSheet() {
         <button className="btn-quiet" onClick={() => setEdit(!edit)}>{edit ? 'ดูตัวอย่าง' : 'แก้ไขข้อความ'}</button>
         <button className="btn-quiet" onClick={save} disabled={!!busy}>บันทึก</button>
         <button className="btn" onClick={() => { setEdit(false); setTimeout(() => window.print(), 80) }}>พิมพ์ / PDF</button>
-        {msg && <span className={`alert inline ${msg.type}`}>{msg.text}</span>}
+        {msg && <span role="status" className={`alert inline ${msg.type}`}>{msg.text}</span>}
         {!saved[lang] && !msg && <span className="muted small">ฉบับนี้ยังไม่ได้บันทึก (✓ = บันทึกแล้ว)</span>}
       </div>
 
@@ -207,16 +207,16 @@ export default function ProfileSheet() {
 
         <H pair={L.s1} />
         <div className="ps-grid">
-          <div><span>{L.name}</span><strong><H1 k="name" def={`${patient.first_name} ${patient.last_name}`} /></strong></div>
-          <div><span>{L.hn}</span><strong><H1 k="hn" def={patient.hn || '-'} /></strong></div>
-          <div><span>{L.ageSex}</span><strong><H1 k="age_sex" def={`${age !== '' ? `${age} ${L.ageUnit}` : '-'}${sexLabel ? ` / ${sexLabel}` : ''}`} /></strong></div>
-          <div><span>{L.date}</span><strong><H1 k="date" def={fmtDate(visit.visit_date, L.dateLang)} /></strong></div>
-          <div><span>{L.doctor}</span><strong><H1 k="doctor" def={visit.author?.full_name || '-'} /></strong></div>
-          <div><span>{L.allergy}</span><strong><E path={['allergy']} value={sheet.allergy} /></strong></div>
+          <div><span>{L.name}</span><strong><H1 label={L.name} k="name" def={`${patient.first_name} ${patient.last_name}`} /></strong></div>
+          <div><span>{L.hn}</span><strong><H1 label={L.hn} k="hn" def={patient.hn || '-'} /></strong></div>
+          <div><span>{L.ageSex}</span><strong><H1 label={L.ageSex} k="age_sex" def={`${age !== '' ? `${age} ${L.ageUnit}` : '-'}${sexLabel ? ` / ${sexLabel}` : ''}`} /></strong></div>
+          <div><span>{L.date}</span><strong><H1 label={L.date} k="date" def={fmtDate(visit.visit_date, L.dateLang)} /></strong></div>
+          <div><span>{L.doctor}</span><strong><H1 label={L.doctor} k="doctor" def={visit.author?.full_name || '-'} /></strong></div>
+          <div><span>{L.allergy}</span><strong><E path={['allergy']} value={sheet.allergy} label={L.allergy} /></strong></div>
         </div>
 
         {(sheet.family_history || edit) && (
-          <p className="ps-line"><strong>{L.family}</strong> <E path={['family_history']} value={sheet.family_history} multi /></p>
+          <p className="ps-line"><strong>{L.family}</strong> <E path={['family_history']} value={sheet.family_history} multi label={L.family} /></p>
         )}
 
         {(sheet.medications.length > 0 || edit) && (
@@ -227,9 +227,9 @@ export default function ProfileSheet() {
               <tbody>
                 {sheet.medications.map((m, i) => (
                   <tr key={i}>
-                    <td><E path={['medications', i, 'name']} value={m.name} /></td>
-                    <td><E path={['medications', i, 'use']} value={m.use} multi /></td>
-                    <td><E path={['medications', i, 'status']} value={m.status} /><Del onClick={() => rm('medications', i)} /></td>
+                    <td><E path={['medications', i, 'name']} value={m.name} label={L.medCols[0]} /></td>
+                    <td><E path={['medications', i, 'use']} value={m.use} multi label={L.medCols[1]} /></td>
+                    <td><E path={['medications', i, 'status']} value={m.status} label={L.medCols[2]} /><Del label={`ลบ ${m.name || `ยาแถวที่ ${i + 1}`}`} onClick={() => rm('medications', i)} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -247,17 +247,17 @@ export default function ProfileSheet() {
                 <td><strong>{i + 1}</strong></td>
                 <td>
                   {lang === 'th'
-                    ? <strong className="ps-en"><E path={['problems', i, 'title_th']} value={titleOf(p)} multi /></strong>
-                    : <strong className="ps-en"><E path={['problems', i, 'title_en']} value={p.title_en} multi /></strong>}
+                    ? <strong className="ps-en"><E path={['problems', i, 'title_th']} value={titleOf(p)} multi label={`${L.probCols[1]} ${i + 1}`} /></strong>
+                    : <strong className="ps-en" lang={lang === 'bi' ? 'en' : undefined}><E path={['problems', i, 'title_en']} value={p.title_en} multi label={`${L.probCols[1]} ${i + 1}`} /></strong>}
                   {lang === 'bi' && (p.title_th || edit) && <div><E path={['problems', i, 'title_th']} value={p.title_th} multi placeholder="ชื่อปัญหาภาษาไทย" /></div>}
-                  {edit && <div><input className="ps-in" defaultValue={p.short || ''} placeholder="ชื่อสั้น (ใช้ในตารางนัด)" onBlur={(e) => upd(['problems', i, 'short'], e.target.value)} /></div>}
+                  {edit && <div><input className="ps-in" aria-label={`ชื่อสั้นของปัญหา ${i + 1}`} defaultValue={p.short || ''} placeholder="ชื่อสั้น (ใช้ในตารางนัด)" onBlur={(e) => upd(['problems', i, 'short'], e.target.value)} /></div>}
                 </td>
                 <td>{edit
-                  ? <select className="ps-in" value={p.level} onChange={(e) => upd(['problems', i, 'level'], e.target.value)}>
+                  ? <select className="ps-in" aria-label={`${L.probCols[2]} ${i + 1}`} value={p.level} onChange={(e) => upd(['problems', i, 'level'], e.target.value)}>
                     {['high', 'medium', 'low'].map((l) => <option key={l} value={l}>{levelLabel(l, lang)}</option>)}
                   </select>
                   : <span className={`ps-badge lv-${p.level}`}>{levelLabel(p.level, lang)}</span>}</td>
-                <td><E path={['problems', i, 'evidence']} value={p.evidence} multi /><Del onClick={() => removeProblem(i)} /></td>
+                <td><E path={['problems', i, 'evidence']} value={p.evidence} multi label={`${L.probCols[3]} ${i + 1}`} /><Del label={`ลบปัญหาที่ ${i + 1}`} onClick={() => removeProblem(i)} /></td>
               </tr>
             ))}
           </tbody>
@@ -295,12 +295,12 @@ export default function ProfileSheet() {
               <tbody>
                 {sheet.followup.map((f, i) => (
                   <tr key={i}>
-                    <td><input className="ps-in" list="follow-periods" defaultValue={f.when} placeholder="เลือกหรือพิมพ์" onBlur={(e) => upd(['followup', i, 'when'], e.target.value)} /></td>
-                    <td><E path={['followup', i, 'item']} value={f.item} multi /></td>
+                    <td><input className="ps-in" aria-label={`${L.followCols[0]} แถวที่ ${i + 1}`} list="follow-periods" defaultValue={f.when} placeholder="เลือกหรือพิมพ์" onBlur={(e) => upd(['followup', i, 'when'], e.target.value)} /></td>
+                    <td><E path={['followup', i, 'item']} value={f.item} multi label={`${L.followCols[1]} แถวที่ ${i + 1}`} /></td>
                     <td>
-                      <textarea className="ps-in" rows={2} defaultValue={relatedTitles(f).join('\n')} placeholder="ปัญหาที่เกี่ยวข้อง (1 บรรทัดต่อ 1 เรื่อง เว้นว่าง = ทั่วไป)"
+                      <textarea className="ps-in" rows={2} aria-label={`${L.followCols[2]} แถวที่ ${i + 1}`} defaultValue={relatedTitles(f).join('\n')} placeholder="ปัญหาที่เกี่ยวข้อง (1 บรรทัดต่อ 1 เรื่อง เว้นว่าง = ทั่วไป)"
                         onBlur={(e) => upd(['followup', i, 'related_text'], e.target.value)} />
-                      <Del onClick={() => rm('followup', i)} />
+                      <Del label={`ลบนัดแถวที่ ${i + 1}`} onClick={() => rm('followup', i)} />
                     </td>
                   </tr>
                 ))}

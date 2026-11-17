@@ -49,6 +49,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .pre { white-space: pre-wrap; }
 .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .boot { padding: 4rem; text-align: center; color: var(--ink-2); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* ---------- category color hooks ---------- */
 .cat-biomarker    { --cat: var(--c-conventional); }
@@ -250,6 +251,7 @@ select.flag-borderline { color: var(--warn); font-weight: 600; }
 .modal-back { position: fixed; inset: 0; background: rgba(21, 40, 58, .35); display: grid; place-items: center; padding: 1rem; z-index: 50; }
 .modal { background: var(--surface); border-radius: var(--r-md); padding: 1.25rem; width: 100%; max-width: 560px; max-height: 90vh; overflow: auto; }
 .modal.wide { max-width: 900px; }
+.modal:focus { outline: none; }
 .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .form-grid .actions { justify-content: flex-end; }
 .share-row { display: grid; grid-template-columns: 1fr 170px auto; gap: .5rem; }

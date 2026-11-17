@@ -102,9 +102,9 @@ export default function PatientProfile() {
         </div>
       ) : (
         <>
-          <div className="visit-strip" role="tablist" aria-label="ครั้งที่ตรวจ">
+          <div className="visit-strip" role="group" aria-label="เลือกครั้งที่ตรวจ">
             {visits.map((v) => (
-              <button key={v.id} role="tab" aria-selected={v.id === visitId} className={v.id === visitId ? 'on' : ''} onClick={() => setVisitId(v.id)}>
+              <button key={v.id} type="button" aria-pressed={v.id === visitId} className={v.id === visitId ? 'on' : ''} onClick={() => setVisitId(v.id)}>
                 <strong>{fmtDate(v.visit_date)}</strong>
                 <span>{v.package_name || 'Check-up'}{v.status === 'draft' ? ', ร่าง' : ''}</span>
               </button>

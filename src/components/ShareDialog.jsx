@@ -47,7 +47,7 @@ export default function ShareDialog({ patient, onClose }) {
         </select>
         <button className="btn" onClick={grant} disabled={!pick}>แชร์</button>
       </div>
-      {err && <p className="alert error">{err}</p>}
+      {err && <p className="alert error" role="alert">{err}</p>}
       <h3 className="sub">แพทย์ที่เข้าถึงเคสนี้</h3>
       {shares.length === 0 ? <p className="muted">ยังไม่ได้แชร์ให้ใคร</p> : (
         <ul className="plain-list">
@@ -55,7 +55,7 @@ export default function ShareDialog({ patient, onClose }) {
             <li key={s.doctor_id}>
               <span>{s.doctor?.full_name || s.doctor?.email}</span>
               <span className="tag">{s.level === 'edit' ? 'แก้ไขได้' : 'ดูได้'}</span>
-              <button className="btn-quiet danger" onClick={() => revoke(s.doctor_id)}>ยกเลิกการแชร์</button>
+              <button type="button" className="btn-quiet danger" aria-label={`ยกเลิกการแชร์กับ ${s.doctor?.full_name || s.doctor?.email}`} onClick={() => revoke(s.doctor_id)}>ยกเลิกการแชร์</button>
             </li>
           ))}
         </ul>

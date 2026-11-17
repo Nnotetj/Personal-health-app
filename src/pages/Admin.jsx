@@ -29,12 +29,12 @@ export default function Admin() {
     <div className="page">
       <div className="page-head">
         <h1>ผู้ดูแลระบบ</h1>
-        <div className="seg" role="tablist">
-          <button role="tab" aria-selected={tab === 'doctors'} className={tab === 'doctors' ? 'on' : ''} onClick={() => setTab('doctors')}>แพทย์</button>
-          <button role="tab" aria-selected={tab === 'catalog'} className={tab === 'catalog' ? 'on' : ''} onClick={() => setTab('catalog')}>Test catalog</button>
+        <div className="seg" role="group" aria-label="ส่วนของผู้ดูแลระบบ">
+          <button type="button" aria-pressed={tab === 'doctors'} className={tab === 'doctors' ? 'on' : ''} onClick={() => setTab('doctors')}>แพทย์</button>
+          <button type="button" aria-pressed={tab === 'catalog'} className={tab === 'catalog' ? 'on' : ''} onClick={() => setTab('catalog')}>Test catalog</button>
         </div>
       </div>
-      {err && <p className="alert error">{err}</p>}
+      {err && <p className="alert error" role="alert">{err}</p>}
       {tab === 'catalog' ? <CatalogAdmin /> : <>
 
       <h2 className="sub">รออนุมัติ ({pending.length})</h2>
@@ -43,7 +43,7 @@ export default function Admin() {
           {pending.map((r) => (
             <li key={r.id}>
               <span><strong>{r.full_name || 'ไม่ระบุชื่อ'}</strong> <span className="muted">{r.email}{r.license_no && `, ${r.license_no}`}, สมัคร {fmtDate(r.created_at)}</span></span>
-              <button className="btn" onClick={() => update(r.id, { is_active: true })}>อนุมัติ</button>
+              <button type="button" className="btn" aria-label={`อนุมัติ ${r.full_name || r.email}`} onClick={() => update(r.id, { is_active: true })}>อนุมัติ</button>
             </li>
           ))}
         </ul>
@@ -54,11 +54,11 @@ export default function Admin() {
         {active.map((r) => (
           <li key={r.id}>
             <span><strong>{r.full_name || r.email}</strong> <span className="muted">{r.email}</span></span>
-            <select value={r.role} disabled={r.id === profile.id} onChange={(e) => update(r.id, { role: e.target.value })} aria-label="บทบาท">
+            <select value={r.role} disabled={r.id === profile.id} onChange={(e) => update(r.id, { role: e.target.value })} aria-label={`บทบาทของ ${r.full_name || r.email}`}>
               <option value="doctor">Doctor</option>
               <option value="admin">Admin</option>
             </select>
-            {r.id !== profile.id && <button className="btn-quiet danger" onClick={() => update(r.id, { is_active: false })}>ระงับบัญชี</button>}
+            {r.id !== profile.id && <button type="button" className="btn-quiet danger" aria-label={`ระงับบัญชี ${r.full_name || r.email}`} onClick={() => update(r.id, { is_active: false })}>ระงับบัญชี</button>}
           </li>
         ))}
       </ul>
