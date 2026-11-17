@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { CATEGORIES, CAT, DOMAINS, FLAGS, PRIORITIES, ageFrom, fmtDate, isAbnormal, prioritySort } from '../lib/constants'
 import PatientForm from '../components/PatientForm'
 import ShareDialog from '../components/ShareDialog'
+import DeletePatientDialog from '../components/DeletePatientDialog'
 import Sparkline from '../components/Sparkline'
 import { trendKey } from '../lib/catalog'
 
 export default function PatientProfile() {
   const { id } = useParams()
   const { profile } = useAuth()
+  const nav = useNavigate()
   const [patient, setPatient] = useState(null)
   const [visits, setVisits] = useState([])
   const [allFindings, setAllFindings] = useState([])
@@ -22,6 +24,7 @@ export default function PatientProfile() {
   const [pertinentOnly, setPertinentOnly] = useState(false)
   const [editing, setEditing] = useState(false)
   const [sharing, setSharing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [notFound, setNotFound] = useState(false)
 
   async function load() {
@@ -86,6 +89,7 @@ export default function PatientProfile() {
           {canEdit && <button className="btn-quiet" onClick={() => setEditing(true)}>แก้ไขข้อมูลคนไข้</button>}
           {isOwner && <button className="btn-quiet" onClick={() => setSharing(true)}>แชร์เคส</button>}
           {canEdit && <Link className="btn" to={`/patients/${id}/visits/new`}>เพิ่มผลตรวจใหม่</Link>}
+          {profile.role === 'admin' && <button className="btn-quiet danger" onClick={() => setDeleting(true)}>ลบคนไข้</button>}
         </div>
       </section>
 
@@ -232,6 +236,7 @@ export default function PatientProfile() {
 
       {editing && <PatientForm patient={patient} onClose={() => setEditing(false)} onSaved={(p) => { setPatient(p); setEditing(false) }} />}
       {sharing && <ShareDialog patient={patient} onClose={() => setSharing(false)} />}
+      {deleting && <DeletePatientDialog patient={patient} onClose={() => setDeleting(false)} onDeleted={() => nav('/')} />}
     </div>
   )
 }
