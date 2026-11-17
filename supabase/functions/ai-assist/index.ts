@@ -297,22 +297,22 @@ const sheetSystem = (lang: SheetLang) => {
 - "medications": "use" = dose and indication in Thai (e.g. "12.5 mg · ภาวะก่อนเบาหวาน / ควบคุมน้ำหนัก"); "status" in Thai (e.g. "ใช้อยู่", "ใช้ไม่สม่ำเสมอ", "เริ่มแล้ว", "เริ่มใหม่ตามแผน").
 - "problems": "title_th" = Thai translation; "evidence" = Thai supporting data with key numbers and why it matters, 1-3 short clauses.
 - "plan" items "type" must be one of: ยา, อาหารเสริม, โภชนาการ, วิถีชีวิต, ตรวจติดตาม, ส่งต่อ, อื่น ๆ. Other item fields in Thai (English terms kept).
-  "follow_up" e.g. "ตรวจ lipid panel ซ้ำใน 8–12 สัปดาห์", "ต่อเนื่อง".
-- "followup": "when" = short Thai period (e.g. "4–6 สัปดาห์", "3 เดือน", "ทุกปี"); "item" in Thai with English terms.`,
+  "follow_up" e.g. "ตรวจ lipid panel ซ้ำใน 8–12 สัปดาห์", "ต่อเนื่อง".`,
     th: `- "allergy": drug allergy in Thai ("ปฏิเสธ" for none, or the allergen). "" if not stated.
 - "family_history": Thai.
 - "medications": "use" = dose and indication in Thai; "status" in Thai (e.g. "ใช้อยู่", "ใช้ไม่สม่ำเสมอ", "เริ่มแล้ว", "เริ่มใหม่ตามแผน").
 - "problems": "title_th" = Thai translation; "evidence" = Thai supporting data with key numbers, 1-3 short clauses.
-- "plan" items "type" must be one of: ยา, อาหารเสริม, โภชนาการ, วิถีชีวิต, ตรวจติดตาม, ส่งต่อ, อื่น ๆ. Other item fields in Thai.
-- "followup": "when" = short Thai period (e.g. "4–6 สัปดาห์", "3 เดือน", "ทุกปี"); "item" in Thai.`,
+- "plan" items "type" must be one of: ยา, อาหารเสริม, โภชนาการ, วิถีชีวิต, ตรวจติดตาม, ส่งต่อ, อื่น ๆ. Other item fields in Thai.`,
     en: `- "allergy": drug allergy ("None reported" if the profile says none, or the allergen). "" if not stated.
 - "family_history": English.
 - "medications": "use" = dose and indication in English; "status" in English (e.g. "Taking", "Taking irregularly", "Started", "Newly started per plan").
 - "problems": "title_en" = exact English title; "title_th" = ""; "evidence" = English supporting data with key numbers, 1-3 short clauses.
 - "plan" items "type" must be one of: Medication, Supplement, Nutrition, Lifestyle, Follow-up test, Referral, Other. Other item fields in English.
-  "follow_up" e.g. "Repeat lipid panel in 8–12 weeks", "Ongoing".
-- "followup": "when" = short English period (e.g. "4–6 weeks", "3 months", "Yearly"); "item" in English.`,
+  "follow_up" e.g. "Repeat lipid panel in 8–12 weeks", "Ongoing".`,
   }[lang];
+  const periods = lang === "en"
+    ? ["Within 1 month", "4–6 weeks", "3 months", "6 months", "Yearly", "Every 2–3 years"]
+    : ["ภายใน 1 เดือน", "4–6 สัปดาห์", "3 เดือน", "6 เดือน", "ทุกปี", "2–3 ปี"];
   return `You fill in a "Personal Health Profile" form (Problem List and Plan of Management) from a
 doctor-approved profile. The reader is a patient and their doctors. The doctor will edit it.
 
@@ -328,8 +328,15 @@ ${fields}
 - "plan": grouped by problem. Each group: "problem" = problem number (1, 2, 3...) or 0 for general plans;
   each item {"type", "action", "target", "follow_up"}; "target" = the measurable goal (e.g. "LDL-C < 70 mg/dL").
   Every action in the profile's plan must appear exactly once.
-- "followup": the combined follow-up schedule built from plan items that have a time or recheck, sorted soonest to latest.
-  Each has "problems" = array of related problem numbers ([] if general). Merge items with the same period.
+- "followup": a SHORT, easy-to-read schedule of tests and appointments only (re-tests, imaging, referrals, clinic visits).
+  Do NOT include starting a drug, diet or exercise advice (those belong in "plan").
+  "when" MUST be exactly one of these labels, nothing else: ${periods.map((x) => `"${x}"`).join(", ")}.
+  Pick the closest label (e.g. 8–12 weeks or "within 3 months" -> the 3-month label; 6–12 months -> the 6-month label;
+  1–2 years or annual -> the yearly label). Never put the timing or the word "recheck/follow-up" inside "item".
+  "item" = a short name of the test or visit only (e.g. "HbA1c", "Lipid panel", "Eye exam", "Blood pressure check"),
+  one test or visit per entry, in the language of the form. Put the same test only once.
+  "problems" = array of the related problem numbers ([] if general).
+- "problems" also need "short": a 1-3 word label for the problem used in the schedule (e.g. "Blood pressure", "Prediabetes", "Fatty liver"), in the language of the form.
 
 Return the result by calling the submit_result tool.`;
 };
@@ -347,8 +354,8 @@ const SHEET_SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        properties: { title_en: str, title_th: str, level: { type: "string", enum: ["high", "medium", "low"] }, evidence: str },
-        required: ["title_en", "title_th", "level", "evidence"],
+        properties: { title_en: str, title_th: str, short: str, level: { type: "string", enum: ["high", "medium", "low"] }, evidence: str },
+        required: ["title_en", "title_th", "short", "level", "evidence"],
       },
     },
     plan: {

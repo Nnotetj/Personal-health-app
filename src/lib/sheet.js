@@ -3,7 +3,7 @@
 // {
 //   allergy, family_history,
 //   medications: [{ name, use, status }],
-//   problems:    [{ title_en, title_th, level: 'high'|'medium'|'low', evidence }],
+//   problems:    [{ title_en, title_th, short, level: 'high'|'medium'|'low', evidence }],   // short = ชื่อสั้นไว้แสดงในตารางนัด
 //   plan:        [{ problem: n | 0, items: [{ type, action, target, follow_up }] }],   // n = ลำดับใน problems (เริ่มที่ 1), 0 = ทั่วไป
 //   followup:    [{ when, item, problems: [n...], related_text?: string }]   // related_text = ข้อความที่แพทย์พิมพ์เอง (ถ้ามีจะใช้แทนชื่อจาก problems)
 // }
@@ -102,6 +102,7 @@ function parseProblems(text) {
     return {
       title_en: head.replace(/\s*\((High|Medium|Low)\)\s*$/i, '').trim(),
       title_th: '',
+      short: '',
       level: lv ? lv[1].toLowerCase() : 'medium',
       evidence: rest.join(' — ').trim(),
     }
@@ -143,12 +144,46 @@ function periodDays(s) {
 }
 const isOngoing = (s) => !s || /ต่อเนื่อง|ongoing|continu|ตลอด|now|ทันที/i.test(s)
 
-export function buildFollowup(problems, plan) {
+// ช่วงเวลานัดมาตรฐาน (ใช้เป็นตัวเลือกและให้ AI ใช้ข้อความเดียวกัน เพื่อจัดกลุ่มได้)
+export const FOLLOW_PERIODS = [
+  { th: 'ภายใน 1 เดือน', en: 'Within 1 month' },
+  { th: '4–6 สัปดาห์', en: '4–6 weeks' },
+  { th: '3 เดือน', en: '3 months' },
+  { th: '6 เดือน', en: '6 months' },
+  { th: 'ทุกปี', en: 'Yearly' },
+  { th: '2–3 ปี', en: 'Every 2–3 years' },
+]
+export const followPeriods = (lang) => FOLLOW_PERIODS.map((x) => (lang === 'en' ? x.en : x.th))
+
+// ข้อความช่วงเวลาอิสระ -> ช่วงมาตรฐาน (ถ้าอ่านไม่ออก คงข้อความเดิม)
+export function bucketFor(text, lang = 'bi') {
+  const d = periodDays(text)
+  if (d >= 10000) return String(text || '').trim()
+  const i = d <= 31 ? 0 : d <= 49 ? 1 : d <= 135 ? 2 : d <= 270 ? 3 : d <= 400 ? 4 : 5
+  return lang === 'en' ? FOLLOW_PERIODS[i].en : FOLLOW_PERIODS[i].th
+}
+export { periodDays }
+
+// จัดกลุ่มแถวนัดตามช่วงเวลา (ข้อความเหมือนกัน = กลุ่มเดียวกัน) เรียงจากใกล้ไปไกล
+export function groupFollowup(rows) {
+  const map = new Map()
+  rows.forEach((r, index) => {
+    const key = String(r.when || '').trim().toLowerCase()
+    if (!map.has(key)) map.set(key, { when: String(r.when || '').trim(), rows: [] })
+    map.get(key).rows.push({ ...r, index })
+  })
+  return [...map.values()].sort((a, b) => periodDays(a.when) - periodDays(b.when))
+}
+
+const TEST_TYPES = ['ตรวจติดตาม', 'ส่งต่อ', 'Follow-up test', 'Referral']
+export function buildFollowup(problems, plan, lang = 'bi') {
   const rows = []
   for (const g of plan) {
     for (const it of g.items) {
       if (isOngoing(it.follow_up)) continue
-      rows.push({ when: it.follow_up, item: it.action, problems: g.problem ? [g.problem] : [] })
+      // ตรวจ/ส่งต่อ: ใช้ชื่อการตรวจ  ส่วนยา/วิถีชีวิต: ใช้ข้อความ "ตรวจซ้ำ…" ที่ระบุไว้ในช่องติดตามผล
+      const item = TEST_TYPES.includes(it.type) ? it.action : it.follow_up
+      rows.push({ when: bucketFor(it.follow_up, lang), item, problems: g.problem ? [g.problem] : [] })
     }
   }
   rows.sort((a, b) => periodDays(a.when) - periodDays(b.when))
@@ -172,7 +207,7 @@ export function buildSheetFromData({ problems = [], plan = [], sections = [] }, 
     medications: meds,
     problems: parsedProblems,
     plan: parsedPlan,
-    followup: buildFollowup(parsedProblems, parsedPlan),
+    followup: buildFollowup(parsedProblems, parsedPlan, lang),
   }
 }
 
@@ -185,7 +220,7 @@ export function normalizeSheet(s) {
     family_history: s.family_history || '',
     medications: arr(s.medications).map((m) => ({ name: m.name || '', use: m.use || '', status: m.status || '' })),
     problems: arr(s.problems).map((p) => ({
-      title_en: p.title_en || '', title_th: p.title_th || '',
+      title_en: p.title_en || '', title_th: p.title_th || '', short: p.short || '',
       level: LEVELS[p.level] ? p.level : 'medium', evidence: p.evidence || '',
     })),
     plan: arr(s.plan).map((g) => ({

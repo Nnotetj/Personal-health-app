@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { supabase, aiAssist } from '../lib/supabase'
 import { ageFrom, fmtDate, prioritySort } from '../lib/constants'
 import {
-  DOC_LANGS, LABELS, ROW_KEY, buildFollowup, buildSheetFromData, levelLabel, normalizeSheet, planTypes, sheetProfileForAI,
+  DOC_LANGS, LABELS, ROW_KEY, buildFollowup, buildSheetFromData, followPeriods, groupFollowup, levelLabel, normalizeSheet, planTypes, sheetProfileForAI,
 } from '../lib/sheet'
 
 function setIn(obj, path, val) {
@@ -95,11 +95,13 @@ export default function ProfileSheet() {
   const age = patient.dob ? ageFrom(patient.dob, visit.visit_date) : ''
   const types = planTypes(lang)
   const titleOf = (p) => (lang === 'th' ? (p.title_th || p.title_en) : p.title_en)
+  // ชื่อสั้นของปัญหา (ใช้ในตารางนัด) ถ้าไม่ได้ตั้ง ใช้ชื่อเต็ม
+  const shortOf = (p) => (p.short || '').trim() || titleOf(p)
   // ปัญหาที่เกี่ยวข้อง: แสดงชื่อปัญหาเลย (ไม่ใช่เลขข้อ)
-  // ถ้าแพทย์พิมพ์เอง (related_text) ใช้ข้อความนั้น ไม่เช่นนั้นดึงชื่อจากเลขข้อ
+  // ถ้าแพทย์พิมพ์เอง (related_text) ใช้ข้อความนั้น ไม่เช่นนั้นดึงชื่อสั้นจากเลขข้อ
   const relatedTitles = (f) => (typeof f.related_text === 'string'
     ? f.related_text.split('\n').map((x) => x.trim()).filter(Boolean)
-    : f.problems.map((n) => sheet.problems[n - 1]).filter(Boolean).map(titleOf))
+    : f.problems.map((n) => sheet.problems[n - 1]).filter(Boolean).map(shortOf))
 
   // ข้อความที่แก้ไขได้: โหมดดู = ข้อความ, โหมดแก้ = ช่องกรอก
   const E = ({ path, value, multi, placeholder }) => edit
@@ -237,6 +239,7 @@ export default function ProfileSheet() {
                     ? <strong className="ps-en"><E path={['problems', i, 'title_th']} value={titleOf(p)} multi /></strong>
                     : <strong className="ps-en"><E path={['problems', i, 'title_en']} value={p.title_en} multi /></strong>}
                   {lang === 'bi' && (p.title_th || edit) && <div><E path={['problems', i, 'title_th']} value={p.title_th} multi placeholder="ชื่อปัญหาภาษาไทย" /></div>}
+                  {edit && <div><input className="ps-in" defaultValue={p.short || ''} placeholder="ชื่อสั้น (ใช้ในตารางนัด)" onBlur={(e) => upd(['problems', i, 'short'], e.target.value)} /></div>}
                 </td>
                 <td>{edit
                   ? <select className="ps-in" value={p.level} onChange={(e) => upd(['problems', i, 'level'], e.target.value)}>
@@ -248,7 +251,7 @@ export default function ProfileSheet() {
             ))}
           </tbody>
         </table>
-        {edit && <button className="btn-add no-print" onClick={() => setSheet((s) => ({ ...s, problems: [...s.problems, { title_en: '', title_th: '', level: 'medium', evidence: '' }] }))}>เพิ่มปัญหา</button>}
+        {edit && <button className="btn-add no-print" onClick={() => setSheet((s) => ({ ...s, problems: [...s.problems, { title_en: '', title_th: '', short: '', level: 'medium', evidence: '' }] }))}>เพิ่มปัญหา</button>}
 
         <H pair={L.s3} />
         {sheet.problems.map((p, i) => {
@@ -272,31 +275,48 @@ export default function ProfileSheet() {
         )}
 
         <H pair={L.s4} />
-        <table className="ps-table ps-follow">
-          <thead><tr>{L.followCols.map((c) => <Th key={c}>{c}</Th>)}</tr></thead>
-          <tbody>
-            {sheet.followup.map((f, i) => (
-              <tr key={i}>
-                <td><strong><E path={['followup', i, 'when']} value={f.when} /></strong></td>
-                <td><E path={['followup', i, 'item']} value={f.item} multi /></td>
-                <td>{edit
-                  ? <>
-                    <textarea className="ps-in" rows={2} defaultValue={relatedTitles(f).join('\n')} placeholder="พิมพ์ชื่อปัญหาเอง (1 บรรทัดต่อ 1 ปัญหา)"
-                      onBlur={(e) => upd(['followup', i, 'related_text'], e.target.value)} />
-                    <small className="muted">พิมพ์ชื่อปัญหาได้เอง เว้นว่าง = ทั่วไป</small>
-                  </>
-                  : (relatedTitles(f).length
-                    ? relatedTitles(f).map((t, k) => <div key={k}>{t}</div>)
-                    : L.generalRef)}
-                  <Del onClick={() => rm('followup', i)} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {edit ? (
+          <>
+            <p className="muted small no-print">แต่ละแถว = 1 รายการ ช่วงเวลาเลือกจากรายการหรือพิมพ์เองก็ได้ รายการที่ช่วงเวลาเหมือนกันจะรวมเป็นกลุ่มเดียวในใบพิมพ์</p>
+            <datalist id="follow-periods">{followPeriods(lang).map((x) => <option key={x} value={x} />)}</datalist>
+            <table className="ps-table ps-follow">
+              <thead><tr>{L.followCols.map((c) => <Th key={c}>{c}</Th>)}</tr></thead>
+              <tbody>
+                {sheet.followup.map((f, i) => (
+                  <tr key={i}>
+                    <td><input className="ps-in" list="follow-periods" defaultValue={f.when} placeholder="เลือกหรือพิมพ์" onBlur={(e) => upd(['followup', i, 'when'], e.target.value)} /></td>
+                    <td><E path={['followup', i, 'item']} value={f.item} multi /></td>
+                    <td>
+                      <textarea className="ps-in" rows={2} defaultValue={relatedTitles(f).join('\n')} placeholder="ปัญหาที่เกี่ยวข้อง (1 บรรทัดต่อ 1 เรื่อง เว้นว่าง = ทั่วไป)"
+                        onBlur={(e) => upd(['followup', i, 'related_text'], e.target.value)} />
+                      <Del onClick={() => rm('followup', i)} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        ) : (
+          <table className="ps-table ps-follow">
+            <thead><tr>{L.followCols.map((c) => <Th key={c}>{c}</Th>)}</tr></thead>
+            <tbody>
+              {groupFollowup(sheet.followup).filter((g) => g.rows.some((r) => (r.item || '').trim())).map((g) => {
+                const related = [...new Set(g.rows.flatMap(relatedTitles))]
+                return (
+                  <tr key={g.when}>
+                    <td><strong>{g.when}</strong></td>
+                    <td><ul className="ps-bullets">{g.rows.filter((r) => (r.item || '').trim()).map((r) => <li key={r.index}>{r.item}</li>)}</ul></td>
+                    <td>{related.length ? related.join(', ') : L.generalRef}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
         {edit && (
           <div className="no-print">
             <button className="btn-add" onClick={() => setSheet((s) => ({ ...s, followup: [...s.followup, { when: '', item: '', problems: [] }] }))}>เพิ่มรายการนัด</button>
-            <button className="btn-add" onClick={() => setSheet((s) => ({ ...s, followup: buildFollowup(s.problems, s.plan) }))}>สร้างตารางนัดใหม่จากแผนด้านบน</button>
+            <button className="btn-add" onClick={() => setSheet((s) => ({ ...s, followup: buildFollowup(s.problems, s.plan, lang) }))}>สร้างตารางนัดใหม่จากแผนด้านบน</button>
           </div>
         )}
 

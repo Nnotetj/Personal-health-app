@@ -436,9 +436,11 @@ textarea.sec-text { font-size: .92rem; line-height: 1.6; }
 .ps-problems th:nth-child(1) { width: 13%; } .ps-problems th:nth-child(2) { width: 31%; } .ps-problems th:nth-child(3) { width: 17%; }
 .ps-plan th, .ps-follow th:nth-child(3) { width: auto; }
 .ps-plan th:nth-child(1) { width: 18%; } .ps-plan th:nth-child(2) { width: 32%; } .ps-plan th:nth-child(3) { width: 24%; }
-.ps-follow th:nth-child(1) { width: 28%; } .ps-follow th:nth-child(2) { width: 42%; }
+.ps-follow th:nth-child(1) { width: 22%; } .ps-follow th:nth-child(2) { width: 44%; }
 .ps-meds th:nth-child(1) { width: 38%; } .ps-meds th:nth-child(2) { width: 38%; }
 .ps-en { display: block; }
+.ps-bullets { margin: 0; padding-left: 4.5mm; }
+.ps-bullets li { margin: 0 0 .8mm; }
 .ps-badge { display: inline-block; color: #fff; font-weight: 700; font-size: 8.5pt; padding: .4mm 2.2mm; border-radius: 1mm; white-space: nowrap; }
 .ps-badge.lv-high { background: #9b1c1c; } .ps-badge.lv-medium { background: #885000; } .ps-badge.lv-low { background: #2d5b4f; }
 .ps-plan-block { break-inside: auto; }
@@ -449,7 +451,9 @@ textarea.sec-text { font-size: .92rem; line-height: 1.6; }
 .ps-in { width: 100%; font-size: 9pt; padding: .8mm 1.5mm; }
 textarea.ps-in { resize: vertical; }
 .ps-del { margin-top: 1mm; padding: 0 .5rem; min-height: 22px; font-size: .7rem; }
-@page ps { size: A4; margin: 14mm 15mm; }
 @media print {
-  .ps { page: ps; width: auto; min-height: 0; padding: 0; box-shadow: none; margin: 0; }
+  .ps { width: auto; min-height: 0; padding: 0; box-shadow: none; margin: 0; }
+  /* ลายเซ็นไม่ลอยอยู่หน้าเดียวโดด ๆ: ให้ติดไปกับแถวสุดท้ายของตารางนัด */
+  .ps-follow tr:last-child { break-after: avoid; }
+  .ps-auth { break-before: avoid; }
 }
