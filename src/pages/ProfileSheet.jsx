@@ -68,6 +68,8 @@ export default function ProfileSheet() {
     try {
       const age = ageFrom(data.patient.dob, data.visit.visit_date)
       const out = normalizeSheet(await aiAssist({ mode: 'sheet', language: lang, profile: sheetProfileForAI(data, age) }))
+      // กันตารางนัดว่าง: ถ้า AI ไม่ส่งรายการนัดมา ให้สร้างจากแผนที่ AI เขียนให้
+      if (!out.followup.length) out.followup = buildFollowup(out.problems, out.plan, lang)
       setSheet(out); setAiUsed((a) => ({ ...a, [lang]: true })); setEdit(true)
       setMsg({ type: 'ok', text: 'AI ร่างแล้ว ตรวจทานและกดบันทึกก่อนพิมพ์' })
     } catch (e) { setMsg({ type: 'error', text: `AI ไม่สำเร็จ: ${e.message}` }) } finally { setBusy(null) }

@@ -278,41 +278,62 @@ const SUMMARY_SCHEMA = {
 
 
 type SheetLang = "bi" | "en" | "th";
+type SheetPart = "info" | "plan" | "follow";
 
-const sheetSystem = (lang: SheetLang) => {
+// ส่วนที่แต่ละ call รับผิดชอบ (เรียกขนานกันเพื่อให้เร็วขึ้น)
+const SHEET_PARTS: Record<SheetPart, string[]> = {
+  info: ["allergy", "family_history", "medications", "problems"],
+  plan: ["plan"],
+  follow: ["followup"],
+};
+
+const sheetSystem = (lang: SheetLang, part?: SheetPart) => {
+  const thaiStyle = `Language style (follow exactly)
+- Write for a patient who is NOT medically trained: simple, everyday, polite Thai. Rewrite, do not translate word by word.
+- Replace medical terms and English abbreviations with plain Thai explanations, e.g. "Lipid panel" -> "ตรวจไขมันในเลือด",
+  "Carotid ultrasound" -> "อัลตราซาวด์หลอดเลือดแดงที่คอ", "Inflammation" -> "การอักเสบในร่างกาย", "Colonoscopy" -> "ส่องกล้องลำไส้ใหญ่".
+- Put the English name in parentheses AFTER the Thai only when doctors or lab reports commonly use it (e.g. "ตรวจน้ำตาลสะสม (HbA1c)").
+  Never leave a whole phrase or sentence in English.
+- English is allowed ONLY for: drug names, units and numbers, and short test codes inside parentheses.
+- Keep every phrase short.`;
   const style = {
-    bi: `Language style (follow exactly)
-- Thai first, written naturally and politely. KEEP English for drug names, test names, abbreviations, diagnoses and numbers
-  (e.g. "Carotid plaque, CAC 4, LDL 181, ApoB 137"). Do not translate drug brand/generic names.`,
-    th: `Language style (follow exactly)
-- Everything in natural, polite Thai. KEEP English only for drug names, test names, abbreviations and numbers
-  (e.g. "Carotid plaque, CAC 4, LDL 181"). "title_en" stays the exact English title from the profile; "title_th" is its Thai translation.`,
+    bi: `${thaiStyle}
+- "title_en" stays the exact English title from the profile; "title_th" is its plain-Thai version.`,
+    th: `${thaiStyle}
+- "title_en" stays the exact English title from the profile; "title_th" is its plain-Thai version.`,
     en: `Language style (follow exactly)
-- Everything in clear, professional English for an international patient and their doctors. No Thai characters anywhere.
-  Keep drug names, test names and numbers as they are. Leave "title_th" as an empty string.`,
+- Everything in clear, plain English for an international patient and their doctors. No Thai characters anywhere.
+  Keep drug names, test names and numbers as they are. Leave "title_th" as an empty string.
+- Keep every phrase short.`,
   }[lang];
+  const thaiFields = `- "allergy": drug allergy in Thai ("ปฏิเสธ" for none, or the allergen). "" if not stated.
+- "family_history": plain Thai (e.g. "โรคหลอดเลือดสมอง; มะเร็งเต้านมตั้งแต่อายุน้อย").
+- "medications": "use" = dose and what it is for, in plain Thai (e.g. "12.5 mg · คุมน้ำตาลและน้ำหนัก"); "status" in Thai (e.g. "ใช้อยู่", "ใช้ไม่สม่ำเสมอ", "เริ่มแล้ว", "เริ่มใหม่ตามแผน").
+- "problems": "title_th" = plain-Thai name of the problem; "evidence" = plain-Thai supporting data with key numbers, at most 2 short clauses.
+- "plan" items "type" must be one of: ยา, อาหารเสริม, โภชนาการ, วิถีชีวิต, ตรวจติดตาม, ส่งต่อ, อื่น ๆ. "action", "target" and "follow_up" in plain Thai
+  ("action" at most 15 words); "follow_up" e.g. "ตรวจไขมันซ้ำใน 8–12 สัปดาห์", "ทำต่อเนื่อง".`;
   const fields = {
-    bi: `- "allergy": drug allergy in Thai ("ปฏิเสธ" for none, or the allergen). "" if not stated.
-- "family_history": Thai with English terms in parentheses when helpful, e.g. "โรคหลอดเลือดสมอง (stroke); มะเร็งเต้านมในอายุน้อย (early breast cancer)".
-- "medications": "use" = dose and indication in Thai (e.g. "12.5 mg · ภาวะก่อนเบาหวาน / ควบคุมน้ำหนัก"); "status" in Thai (e.g. "ใช้อยู่", "ใช้ไม่สม่ำเสมอ", "เริ่มแล้ว", "เริ่มใหม่ตามแผน").
-- "problems": "title_th" = Thai translation; "evidence" = Thai supporting data with key numbers and why it matters, 1-3 short clauses.
-- "plan" items "type" must be one of: ยา, อาหารเสริม, โภชนาการ, วิถีชีวิต, ตรวจติดตาม, ส่งต่อ, อื่น ๆ. Other item fields in Thai (English terms kept).
-  "follow_up" e.g. "ตรวจ lipid panel ซ้ำใน 8–12 สัปดาห์", "ต่อเนื่อง".`,
-    th: `- "allergy": drug allergy in Thai ("ปฏิเสธ" for none, or the allergen). "" if not stated.
-- "family_history": Thai.
-- "medications": "use" = dose and indication in Thai; "status" in Thai (e.g. "ใช้อยู่", "ใช้ไม่สม่ำเสมอ", "เริ่มแล้ว", "เริ่มใหม่ตามแผน").
-- "problems": "title_th" = Thai translation; "evidence" = Thai supporting data with key numbers, 1-3 short clauses.
-- "plan" items "type" must be one of: ยา, อาหารเสริม, โภชนาการ, วิถีชีวิต, ตรวจติดตาม, ส่งต่อ, อื่น ๆ. Other item fields in Thai.`,
+    bi: thaiFields,
+    th: thaiFields,
     en: `- "allergy": drug allergy ("None reported" if the profile says none, or the allergen). "" if not stated.
 - "family_history": English.
 - "medications": "use" = dose and indication in English; "status" in English (e.g. "Taking", "Taking irregularly", "Started", "Newly started per plan").
-- "problems": "title_en" = exact English title; "title_th" = ""; "evidence" = English supporting data with key numbers, 1-3 short clauses.
-- "plan" items "type" must be one of: Medication, Supplement, Nutrition, Lifestyle, Follow-up test, Referral, Other. Other item fields in English.
+- "problems": "title_en" = exact English title; "title_th" = ""; "evidence" = English supporting data with key numbers, at most 2 short clauses.
+- "plan" items "type" must be one of: Medication, Supplement, Nutrition, Lifestyle, Follow-up test, Referral, Other. Other item fields in English ("action" at most 15 words).
   "follow_up" e.g. "Repeat lipid panel in 8–12 weeks", "Ongoing".`,
   }[lang];
   const periods = lang === "en"
     ? ["Within 1 month", "4–6 weeks", "3 months", "6 months", "Yearly", "Every 2–3 years"]
     : ["ภายใน 1 เดือน", "4–6 สัปดาห์", "3 เดือน", "6 เดือน", "ทุกปี", "2–3 ปี"];
+  const itemEx = lang === "en"
+    ? `(e.g. "HbA1c", "Lipid panel", "Eye exam", "Blood pressure check")`
+    : `in plain Thai (e.g. "ตรวจน้ำตาลสะสม (HbA1c)", "ตรวจไขมันในเลือด", "พบจักษุแพทย์", "วัดความดัน")`;
+  const shortEx = lang === "en"
+    ? `(e.g. "Blood pressure", "Prediabetes", "Fatty liver")`
+    : `in plain Thai, NO English (e.g. "ความดันโลหิต", "ก่อนเบาหวาน", "ไขมันพอกตับ", "หลอดเลือดแดงแข็ง")`;
+  const only = part
+    ? `\n\nIMPORTANT: this run covers ONLY these fields: ${SHEET_PARTS[part].join(", ")}. Return only them. Use the profile's problem numbering (1, 2, 3 ... in the order of its problem list).`
+    : "";
   return `You fill in a "Personal Health Profile" form (Problem List and Plan of Management) from a
 doctor-approved profile. The reader is a patient and their doctors. The doctor will edit it.
 
@@ -325,6 +346,7 @@ ${fields}
 - "family_history", "allergy" and "medications" come from the profile's clinical section / background.
 - "medications": current drugs and supplements; "name" = generic name, brand in parentheses if given.
 - "problems": copy the profile's ranked problem list, same order; "level" high | medium | low (from the priority word).
+  "short" = a 1-3 word label for the problem used in the schedule ${shortEx}.
 - "plan": grouped by problem. Each group: "problem" = problem number (1, 2, 3...) or 0 for general plans;
   each item {"type", "action", "target", "follow_up"}; "target" = the measurable goal (e.g. "LDL-C < 70 mg/dL").
   Every action in the profile's plan must appear exactly once.
@@ -333,10 +355,9 @@ ${fields}
   "when" MUST be exactly one of these labels, nothing else: ${periods.map((x) => `"${x}"`).join(", ")}.
   Pick the closest label (e.g. 8–12 weeks or "within 3 months" -> the 3-month label; 6–12 months -> the 6-month label;
   1–2 years or annual -> the yearly label). Never put the timing or the word "recheck/follow-up" inside "item".
-  "item" = a short name of the test or visit only (e.g. "HbA1c", "Lipid panel", "Eye exam", "Blood pressure check"),
-  one test or visit per entry, in the language of the form. Put the same test only once.
-  "problems" = array of the related problem numbers ([] if general).
-- "problems" also need "short": a 1-3 word label for the problem used in the schedule (e.g. "Blood pressure", "Prediabetes", "Fatty liver"), in the language of the form.
+  "item" = a short name of the test or visit only ${itemEx},
+  one test or visit per entry. Put the same test only once.
+  "problems" = array of the related problem numbers ([] if general).${only}
 
 Return the result by calling the submit_result tool.`;
 };
@@ -384,11 +405,17 @@ const SHEET_SCHEMA = {
   required: ["allergy", "family_history", "medications", "problems", "plan", "followup"],
 };
 
+const sheetSchemaFor = (part: SheetPart) => ({
+  type: "object",
+  properties: Object.fromEntries(SHEET_PARTS[part].map((k) => [k, (SHEET_SCHEMA.properties as any)[k]])),
+  required: SHEET_PARTS[part],
+});
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 }
 
-async function callClaude(system: string, user: string, schema: object, deadline: number) {
+async function callClaude(system: string, user: string, schema: object, deadline: number, model: string = MODEL) {
   const key = Deno.env.get("ANTHROPIC_API_KEY");
   if (!key) throw new Error("ยังไม่ได้ตั้งค่า ANTHROPIC_API_KEY ใน Edge Function secrets");
 
@@ -408,7 +435,7 @@ async function callClaude(system: string, user: string, schema: object, deadline
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: MODEL,
+        model,
         max_tokens: MAX_TOKENS,
         system,
         messages: [{ role: "user", content: user }],
@@ -537,7 +564,35 @@ Deno.serve(async (req) => {
     if (body.mode === "sheet") {
       if (!body.profile || typeof body.profile !== "object") return json({ error: "ไม่มีข้อมูลโปรไฟล์" }, 400);
       const lang: SheetLang = body.language === "en" ? "en" : body.language === "th" ? "th" : "bi";
-      return json(await callClaude(sheetSystem(lang), `Doctor-approved profile:\n${JSON.stringify(body.profile)}`, SHEET_SCHEMA, deadline));
+      const userMsg = `Doctor-approved profile:\n${JSON.stringify(body.profile)}`;
+      // ตั้ง secret SHEET_MODEL เพื่อลองโมเดลที่เร็วกว่า (เช่น claude-haiku-5-5) โดยไม่ต้องแก้โค้ด
+      const model = Deno.env.get("SHEET_MODEL") || MODEL;
+      // แบ่งเป็น 3 ส่วนเรียกพร้อมกัน เวลารวม = ส่วนที่ช้าที่สุด แทนที่จะรอเขียนทั้งฉบับทีเดียว
+      const parts: SheetPart[] = ["info", "plan", "follow"];
+      const [info, plan, follow] = await Promise.all(
+        parts.map((p) => callClaude(sheetSystem(lang, p), userMsg, sheetSchemaFor(p), deadline, model)),
+      );
+      let followup = Array.isArray(follow.followup) ? follow.followup : [];
+      console.log("sheet parts", JSON.stringify({
+        lang, model, problems: info.problems?.length ?? 0, plan: plan.plan?.length ?? 0, followup: followup.length,
+        followKeys: Object.keys(follow ?? {}),
+      }));
+      // ถ้าส่วนตารางนัดว่าง ลองอีกรอบโดยให้ดูแผนที่เขียนเสร็จแล้ว
+      if (!followup.length) {
+        try {
+          const again = await callClaude(
+            sheetSystem(lang, "follow"),
+            `${userMsg}\n\nThe plan has already been written. Build the follow-up schedule from it and from the profile:\n${JSON.stringify(plan.plan ?? [])}`,
+            sheetSchemaFor("follow"), deadline, model,
+          );
+          followup = Array.isArray(again.followup) ? again.followup : [];
+        } catch (e) { console.error("followup retry failed", String((e as Error).message)); }
+      }
+      return json({
+        allergy: info.allergy ?? "", family_history: info.family_history ?? "",
+        medications: info.medications ?? [], problems: info.problems ?? [],
+        plan: plan.plan ?? [], followup,
+      });
     }
     if (body.mode === "translate") {
       if (!body.content || typeof body.content !== "object") return json({ error: "ไม่มีฉบับอังกฤษให้แปล" }, 400);
