@@ -216,6 +216,8 @@ export function normalizeSheet(s) {
   if (!s || typeof s !== 'object') return null
   const arr = (x) => (Array.isArray(x) ? x : [])
   return {
+    // ข้อมูลทั่วไปที่แพทย์แก้เอง (ชื่อ, HN, อายุ/เพศ, วันที่, แพทย์) ใช้แทนค่าจากระบบเมื่อมี
+    header: (s.header && typeof s.header === 'object') ? s.header : {},
     allergy: s.allergy || '',
     family_history: s.family_history || '',
     medications: arr(s.medications).map((m) => ({ name: m.name || '', use: m.use || '', status: m.status || '' })),

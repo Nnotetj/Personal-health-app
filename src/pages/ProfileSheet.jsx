@@ -70,6 +70,7 @@ export default function ProfileSheet() {
       const out = normalizeSheet(await aiAssist({ mode: 'sheet', language: lang, profile: sheetProfileForAI(data, age) }))
       // กันตารางนัดว่าง: ถ้า AI ไม่ส่งรายการนัดมา ให้สร้างจากแผนที่ AI เขียนให้
       if (!out.followup.length) out.followup = buildFollowup(out.problems, out.plan, lang)
+      out.header = sheet?.header || {}
       setSheet(out); setAiUsed((a) => ({ ...a, [lang]: true })); setEdit(true)
       setMsg({ type: 'ok', text: 'AI ร่างแล้ว ตรวจทานและกดบันทึกก่อนพิมพ์' })
     } catch (e) { setMsg({ type: 'error', text: `AI ไม่สำเร็จ: ${e.message}` }) } finally { setBusy(null) }
@@ -111,6 +112,14 @@ export default function ProfileSheet() {
       ? <textarea className="ps-in" rows={2} defaultValue={value} placeholder={placeholder} onBlur={(e) => upd(path, e.target.value)} />
       : <input className="ps-in" defaultValue={value} placeholder={placeholder} onBlur={(e) => upd(path, e.target.value)} />)
     : <>{value}</>
+
+  // ช่องข้อมูลทั่วไป: ถ้าแพทย์แก้ไว้ใช้ค่าที่แก้ ไม่เช่นนั้นใช้ค่าจากระบบ (เช่น แก้ชื่อแพทย์เป็นอังกฤษในฉบับ English)
+  const H1 = ({ k, def }) => {
+    const v = typeof sheet.header?.[k] === 'string' ? sheet.header[k] : def
+    return edit
+      ? <input className="ps-in" defaultValue={v} onBlur={(e) => setSheet((s) => ({ ...s, header: { ...(s.header || {}), [k]: e.target.value } }))} />
+      : <>{v}</>
+  }
 
   function removeProblem(i) {
     const n = i + 1
@@ -198,11 +207,11 @@ export default function ProfileSheet() {
 
         <H pair={L.s1} />
         <div className="ps-grid">
-          <div><span>{L.name}</span><strong>{patient.first_name} {patient.last_name}</strong></div>
-          <div><span>{L.hn}</span><strong>{patient.hn || '-'}</strong></div>
-          <div><span>{L.ageSex}</span><strong>{age !== '' ? `${age} ${L.ageUnit}` : '-'}{sexLabel ? ` / ${sexLabel}` : ''}</strong></div>
-          <div><span>{L.date}</span><strong>{fmtDate(visit.visit_date, L.dateLang)}</strong></div>
-          <div><span>{L.doctor}</span><strong>{visit.author?.full_name || '-'}</strong></div>
+          <div><span>{L.name}</span><strong><H1 k="name" def={`${patient.first_name} ${patient.last_name}`} /></strong></div>
+          <div><span>{L.hn}</span><strong><H1 k="hn" def={patient.hn || '-'} /></strong></div>
+          <div><span>{L.ageSex}</span><strong><H1 k="age_sex" def={`${age !== '' ? `${age} ${L.ageUnit}` : '-'}${sexLabel ? ` / ${sexLabel}` : ''}`} /></strong></div>
+          <div><span>{L.date}</span><strong><H1 k="date" def={fmtDate(visit.visit_date, L.dateLang)} /></strong></div>
+          <div><span>{L.doctor}</span><strong><H1 k="doctor" def={visit.author?.full_name || '-'} /></strong></div>
           <div><span>{L.allergy}</span><strong><E path={['allergy']} value={sheet.allergy} /></strong></div>
         </div>
 
