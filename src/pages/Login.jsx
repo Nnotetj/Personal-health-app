@@ -23,7 +23,7 @@ export default function Login() {
   return (
     <div className="auth-wrap">
       <form className="auth-card" onSubmit={submit}>
-        <span className="brand-mark big" aria-hidden="true"><i /><i /><i /><i /></span>
+        <span className="brand-mark big" aria-hidden="true"><i /><i /><i /><i /><i /></span>
         <h1>{CLINIC_NAME}</h1>
         <p className="muted">Personal health profile สำหรับแพทย์</p>
 
