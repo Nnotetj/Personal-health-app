@@ -460,3 +460,16 @@ textarea.ps-in { resize: vertical; }
   .ps-follow tr:last-child { break-after: avoid; }
   .ps-auth { break-before: avoid; }
 }
+
+/* ---------- แถบ Safety / Disclaimer (แสดงถาวร ไม่พิมพ์) ---------- */
+.safety-bar {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .75rem;
+  padding: .45rem 1.25rem; font-size: .8rem; line-height: 1.4; color: var(--ink-2);
+  background: #FFF7E6; border-top: 1px solid #E8D3A5;
+}
+.safety-bar strong { color: #7A4B0E; text-transform: uppercase; letter-spacing: .06em; font-size: .72rem; }
+.safety-bar .safety-en { color: var(--ink-3); }
+.safety-bar.fixed { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; }
+.shell:not(.shell-print) main { padding-bottom: 5.5rem; }
+.auth-wrap .safety-bar { position: fixed; left: 0; right: 0; bottom: 0; }
+@media (max-width: 640px) { .safety-bar .safety-en { display: none; } .shell:not(.shell-print) main { padding-bottom: 6.5rem; } }

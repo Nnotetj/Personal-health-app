@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase, CLINIC_NAME } from '../lib/supabase'
+import SafetyBar from '../components/SafetyBar'
 
 export default function Login() {
   const [mode, setMode] = useState(() => (new URLSearchParams(window.location.search).get('mode') === 'signup' ? 'signup' : 'signin'))
@@ -44,6 +45,7 @@ export default function Login() {
         </button>
         <a className="auth-back" href="/welcome.html">กลับไปหน้าแนะนำ</a>
       </form>
+      <SafetyBar />
     </div>
   )
 }
