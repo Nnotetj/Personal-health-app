@@ -8,6 +8,7 @@ import ProfileSheet from './pages/ProfileSheet'
 import VisitEditor from './pages/VisitEditor'
 import Summary from './pages/Summary'
 import Admin from './pages/Admin'
+import SafetyBar from './components/SafetyBar'
 
 const AuthCtx = createContext(null)
 export const useAuth = () => useContext(AuthCtx)
@@ -77,6 +78,7 @@ function Shell({ children }) {
         </div>
       </header>
       <main>{children}</main>
+      <SafetyBar />
     </div>
   )
 }
