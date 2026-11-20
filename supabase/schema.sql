@@ -37,8 +37,6 @@ create table if not exists public.patients (
   last_name   text not null default '',
   sex         text check (sex in ('M', 'F', 'other')),
   dob         date,
-  phone       text,
-  email       text,
   background  text,           -- PMH, meds, allergies, family hx, lifestyle
   owner_id    uuid not null default auth.uid() references public.profiles(id),
   created_at  timestamptz not null default now(),

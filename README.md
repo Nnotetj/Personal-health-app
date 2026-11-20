@@ -21,7 +21,7 @@ src/lib/catalog.js                  จับคู่ชื่อการต�
 
 1. สร้างโปรเจกต์ที่ supabase.com
 2. SQL Editor > วางไฟล์ `supabase/schema.sql` ทั้งไฟล์ > Run
-   แล้วรันไฟล์ใน `supabase/migrations/` ต่อตามลำดับเลข 002 → 008
+   แล้วรันไฟล์ใน `supabase/migrations/` ต่อตามลำดับเลข 002 → 009
    (004 ต้องรันทีละบรรทัดตามที่เขียนในไฟล์, 007 จะข้ามเองถ้าเป็นฐานข้อมูลใหม่)
 3. Authentication > Providers > เปิด Email (แนะนำเปิด Confirm email)
 4. Deploy Edge Function (ต้องมี Supabase CLI)
@@ -59,6 +59,11 @@ src/lib/catalog.js                  จับคู่ชื่อการต�
 1. Backup ฐานข้อมูล
 2. รัน `007_move_problems_plan_to_sections.sql` ผลท้ายไฟล์ต้องเป็น 0 แถว
 3. รัน `008_drop_legacy_problems_plan.sql` แล้ว deploy หน้าเว็บเวอร์ชันใหม่ทันที
+
+## ข้อมูลส่วนบุคคลของคนไข้
+
+เก็บเฉพาะที่แอปใช้จริง: ชื่อ-นามสกุล, HN, เพศ, วันเกิด (ใช้คำนวณอายุ ณ วันตรวจ)
+ไม่เก็บเบอร์โทรและอีเมล (ลบใน migration 009) และข้อมูลที่ส่งให้ AI ไม่มีชื่อหรือ HN
 
 ## สิทธิ์ (RLS)
 
