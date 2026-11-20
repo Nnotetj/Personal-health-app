@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase, aiAssist } from '../lib/supabase'
-import { ageFrom, fmtDate, prioritySort } from '../lib/constants'
+import { ageFrom, fmtDate } from '../lib/constants'
 import {
   DOC_LANGS, LABELS, ROW_KEY, buildFollowup, buildSheetFromData, followPeriods, groupFollowup, levelLabel, normalizeSheet, planTypes, sheetProfileForAI,
 } from '../lib/sheet'
@@ -29,14 +29,12 @@ export default function ProfileSheet() {
       const { data: visit } = await supabase.from('visits')
         .select('*, author:profiles!visits_created_by_fkey(full_name, license_no)').eq('id', visitId).single()
       if (!visit) return
-      const [{ data: patient }, { data: problems }, { data: plan }, { data: sums }, { data: sections }] = await Promise.all([
+      const [{ data: patient }, { data: sums }, { data: sections }] = await Promise.all([
         supabase.from('patients').select('*').eq('id', visit.patient_id).single(),
-        supabase.from('problems').select('*').eq('visit_id', visitId),
-        supabase.from('plan_items').select('*').eq('visit_id', visitId).order('sort_order'),
         supabase.from('patient_summaries').select('*').eq('visit_id', visitId).in('language', Object.values(ROW_KEY)),
         supabase.from('visit_sections').select('category, content').eq('visit_id', visitId),
       ])
-      const d = { visit, patient, problems: (problems || []).sort(prioritySort), plan: plan || [], sections: sections || [] }
+      const d = { visit, patient, sections: sections || [] }
       const rows = {}, sh = {}, ai = {}
       for (const l of Object.keys(ROW_KEY)) {
         const row = (sums || []).find((r) => r.language === ROW_KEY[l])

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase, aiAssist, CLINIC_NAME } from '../lib/supabase'
-import { T, ageFrom, buildSummaryFromData, countWords, fmtDate, prioritySort, toProfileShape } from '../lib/constants'
+import { T, ageFrom, buildSummaryFromData, countWords, fmtDate, toProfileShape } from '../lib/constants'
 
 export default function Summary() {
   const { visitId } = useParams()
@@ -18,15 +18,13 @@ export default function Summary() {
     (async () => {
       const { data: visit } = await supabase.from('visits').select('*, author:profiles!visits_created_by_fkey(full_name, license_no)').eq('id', visitId).single()
       if (!visit) return
-      const [{ data: patient }, { data: findings }, { data: problems }, { data: plan }, { data: sums }, { data: sections }] = await Promise.all([
+      const [{ data: patient }, { data: findings }, { data: sums }, { data: sections }] = await Promise.all([
         supabase.from('patients').select('*').eq('id', visit.patient_id).single(),
         supabase.from('findings').select('*').eq('visit_id', visitId).order('sort_order'),
-        supabase.from('problems').select('*').eq('visit_id', visitId),
-        supabase.from('plan_items').select('*').eq('visit_id', visitId).order('sort_order'),
         supabase.from('patient_summaries').select('*').eq('visit_id', visitId),
         supabase.from('visit_sections').select('category, content').eq('visit_id', visitId),
       ])
-      setData({ visit, patient, findings: findings || [], problems: (problems || []).sort(prioritySort), plan: plan || [], sections: sections || [] })
+      setData({ visit, patient, findings: findings || [], sections: sections || [] })
       setSaved(Object.fromEntries((sums || []).map((s) => [s.language, s])))
     })()
   }, [visitId])
@@ -41,14 +39,12 @@ export default function Summary() {
   async function generateAI() {
     setBusy('ai'); setMsg(null)
     try {
-      const { patient, visit, findings, problems, plan, sections } = data
+      const { patient, visit, findings, sections } = data
       const profile = {
         sex: patient.sex, age: ageFrom(patient.dob, visit.visit_date),
         sections: Object.fromEntries((sections || []).map((s) => [s.category, s.content])),
         findings: findings.map(({ category, subcategory, test_name, value_text, value_num, unit, ref_range, flag, interpretation }) =>
           ({ category, subcategory, test_name, value: value_text || value_num, unit, ref_range, flag, interpretation })),
-        problems: problems.map(({ id, title, detail, priority }) => ({ id, title, detail, priority })),
-        plan: plan.map(({ problem_id, domain, action, target, timeframe }) => ({ problem_id, domain, action, target, timeframe })),
       }
       setContent(toProfileShape(await aiAssist({ mode: 'summary', language: lang, profile }), lang))
       setAiUsed(true)

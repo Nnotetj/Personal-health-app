@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase, aiAssist } from '../lib/supabase'
-import { CATEGORIES, INTEGRATED, PROBLEM_LIST, PLAN_TEXT, FLAGS, ageFrom, planToText, problemsToText, uid } from '../lib/constants'
+import { CATEGORIES, INTEGRATED, PROBLEM_LIST, PLAN_TEXT, FLAGS, ageFrom, uid } from '../lib/constants'
 
 // กันค่าที่ฐานข้อมูลไม่รู้จัก (AI บางครั้งตั้งชื่อเอง)
 const okFlag = (f) => (FLAGS[f] ? f : 'normal')
@@ -49,20 +49,15 @@ export default function VisitEditor() {
     (async () => {
       let pid = patientIdParam
       if (visitId) {
-        const [{ data: v }, { data: sec }, { data: f }, { data: pr }, { data: pl }] = await Promise.all([
+        const [{ data: v }, { data: sec }, { data: f }] = await Promise.all([
           supabase.from('visits').select('*').eq('id', visitId).single(),
           supabase.from('visit_sections').select('*').eq('visit_id', visitId),
           supabase.from('findings').select('*').eq('visit_id', visitId).order('sort_order'),
-          supabase.from('problems').select('*').eq('visit_id', visitId).order('sort_order'),
-          supabase.from('plan_items').select('*').eq('visit_id', visitId).order('sort_order'),
         ])
         if (!v) { setErr('ไม่พบผลตรวจนี้'); return }
         pid = v.patient_id
         setVisit(v); setAiDraft(v.ai_draft)
         const loaded = { ...emptySections(), ...Object.fromEntries((sec || []).map((s) => [s.category, s.content])) }
-        // ข้อมูลเก่าที่เก็บเป็นตาราง: แปลงเป็นข้อความให้แก้ต่อได้ (บันทึกครั้งหน้าจะเก็บเป็นข้อความ)
-        if (!loaded.problem_list && (pr || []).length) loaded.problem_list = problemsToText(pr)
-        if (!loaded.plan_text && (pl || []).length) loaded.plan_text = planToText(pl, pr || [])
         setSections(loaded)
         setValues((f || []).map((x) => ({ ...x, _k: x.id, _manual: false, value_num: x.value_num ?? '', test_code: x.test_code || '' })))
         if ((f || []).length) setShowValues(true)
@@ -121,8 +116,6 @@ export default function VisitEditor() {
       p_findings: values.map((f, i) => ({ category: okCategory(f.category), subcategory: clean(f.subcategory), test_code: clean(f.test_code),
         test_name: f.test_name, value_num: f.value_num === '' || isNaN(Number(f.value_num)) ? null : Number(f.value_num),
         unit: clean(f.unit), ref_range: clean(f.ref_range), flag: okFlag(f.flag), sort_order: i })),
-      p_problems: [],   // ปัญหาและแผนเก็บเป็นข้อความใน p_sections แล้ว
-      p_plan: [],
     })
     setBusy(null)
     if (error) { setErr(error.message); return }
