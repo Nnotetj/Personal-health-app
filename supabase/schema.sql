@@ -8,7 +8,8 @@ create extension if not exists pgcrypto;
 -- ---------- Enums ----------------------------------------------------
 do $$ begin
   create type app_role         as enum ('doctor', 'admin');
-  create type finding_category as enum ('biomarker', 'multiomic', 'functional', 'imaging', 'clinical', 'integrated');
+  create type finding_category as enum ('biomarker', 'multiomic', 'functional', 'imaging', 'clinical', 'integrated',
+                                       'problem_list', 'plan_text');
   create type finding_flag     as enum ('normal', 'low', 'high', 'borderline', 'abnormal', 'critical');
   create type access_level     as enum ('view', 'edit');
   create type priority_level   as enum ('high', 'medium', 'low');
@@ -87,32 +88,16 @@ create table if not exists public.findings (
   created_at      timestamptz not null default now()
 );
 
--- Prioritised problem list for a visit
-create table if not exists public.problems (
-  id          uuid primary key default gen_random_uuid(),
+-- Free-text section per visit and category: clinical, integrated,
+-- problem_list (prioritised problems) and plan_text (plan of management).
+-- This is the only place problems and plans are stored.
+create table if not exists public.visit_sections (
   visit_id    uuid not null references public.visits(id) on delete cascade,
   patient_id  uuid not null references public.patients(id) on delete cascade,
-  title       text not null,
-  detail      text,
-  priority    priority_level not null default 'medium',
-  category    finding_category,
-  status      text not null default 'active' check (status in ('active', 'monitoring', 'resolved')),
-  sort_order  int not null default 0
-);
-
--- Plan of management, optionally linked to a problem
-create table if not exists public.plan_items (
-  id          uuid primary key default gen_random_uuid(),
-  visit_id    uuid not null references public.visits(id) on delete cascade,
-  patient_id  uuid not null references public.patients(id) on delete cascade,
-  problem_id  uuid references public.problems(id) on delete set null,
-  domain      text not null default 'other' check (domain in
-               ('nutrition','exercise','sleep','stress','supplement','medication',
-                'follow_up_test','referral','other')),
-  action      text not null,
-  target      text,
-  timeframe   text,
-  sort_order  int not null default 0
+  category    finding_category not null,
+  content     text not null default '',
+  updated_at  timestamptz not null default now(),
+  primary key (visit_id, category)
 );
 
 -- Patient-facing 1-page summary, one per visit per language
@@ -144,8 +129,6 @@ create index if not exists idx_access_doctor    on public.patient_access(doctor_
 create index if not exists idx_visits_patient   on public.visits(patient_id, visit_date desc);
 create index if not exists idx_findings_visit   on public.findings(visit_id);
 create index if not exists idx_findings_trend   on public.findings(patient_id, test_name);
-create index if not exists idx_problems_visit   on public.problems(visit_id);
-create index if not exists idx_plan_visit       on public.plan_items(visit_id);
 
 -- ---------- Helper functions (used by RLS) ---------------------------
 -- security definer so policies can read profiles/access without recursion
@@ -225,7 +208,7 @@ begin
 end $$;
 
 do $$ declare t text; begin
-  foreach t in array array['findings','problems','plan_items','patient_summaries'] loop
+  foreach t in array array['findings','visit_sections','patient_summaries'] loop
     execute format('drop trigger if exists trg_patient_from_visit on public.%I', t);
     execute format('create trigger trg_patient_from_visit before insert or update of visit_id on public.%I
                     for each row execute function public.set_patient_from_visit()', t);
@@ -245,6 +228,9 @@ create trigger trg_touch_visits before update on public.visits
   for each row execute function public.touch_updated_at();
 drop trigger if exists trg_touch_summaries on public.patient_summaries;
 create trigger trg_touch_summaries before update on public.patient_summaries
+  for each row execute function public.touch_updated_at();
+drop trigger if exists trg_touch_sections on public.visit_sections;
+create trigger trg_touch_sections before update on public.visit_sections
   for each row execute function public.touch_updated_at();
 
 -- Audit
@@ -270,8 +256,7 @@ alter table public.patients          enable row level security;
 alter table public.patient_access    enable row level security;
 alter table public.visits            enable row level security;
 alter table public.findings          enable row level security;
-alter table public.problems          enable row level security;
-alter table public.plan_items        enable row level security;
+alter table public.visit_sections    enable row level security;
 alter table public.patient_summaries enable row level security;
 alter table public.audit_log         enable row level security;
 
@@ -309,7 +294,7 @@ create policy access_write on public.patient_access for all to authenticated
 
 -- Clinical tables: view if can_view, write if can_edit
 do $$ declare t text; begin
-  foreach t in array array['visits','findings','problems','plan_items','patient_summaries'] loop
+  foreach t in array array['visits','findings','visit_sections','patient_summaries'] loop
     execute format('drop policy if exists %1$s_select on public.%1$I', t);
     execute format('create policy %1$s_select on public.%1$I for select to authenticated
                     using (public.can_view_patient(patient_id))', t);
@@ -333,8 +318,8 @@ create policy audit_select on public.audit_log for select to authenticated
 
 
 -- ---------- Atomic save of one visit + all child rows ----------------
--- security invoker: runs as the calling doctor, so every RLS policy applies
-create or replace function public.save_visit(p_visit jsonb, p_findings jsonb, p_problems jsonb, p_plan jsonb)
+-- security invoker: รันด้วยสิทธิ์ของแพทย์ที่เรียก RLS ทุกข้อจึงมีผล
+create or replace function public.save_visit(p_visit jsonb, p_findings jsonb, p_sections jsonb default '[]')
 returns uuid language plpgsql security invoker set search_path = public as $$
 declare v_id uuid := nullif(p_visit->>'id', '')::uuid;
 begin
@@ -355,37 +340,33 @@ begin
       status       = coalesce(nullif(p_visit->>'status', '')::visit_status, status)
     where id = v_id;
     if not found then raise exception 'Visit not found or no edit permission'; end if;
-    delete from plan_items where visit_id = v_id;
-    delete from problems   where visit_id = v_id;
-    delete from findings   where visit_id = v_id;
+    delete from findings       where visit_id = v_id;
+    delete from visit_sections where visit_id = v_id;
   end if;
 
-  insert into problems (id, visit_id, title, detail, priority, category, status, sort_order)
-  select coalesce(x.id, gen_random_uuid()), v_id, x.title, x.detail,
-         coalesce(x.priority, 'medium'), x.category, coalesce(x.status, 'active'), coalesce(x.sort_order, 0)
-  from jsonb_to_recordset(coalesce(p_problems, '[]')) as
-       x(id uuid, title text, detail text, priority priority_level, category finding_category, status text, sort_order int)
-  where coalesce(x.title, '') <> '';
+  -- ข้อความแต่ละหมวด รวมถึงรายการปัญหา (problem_list) และแผน (plan_text)
+  insert into visit_sections (visit_id, category, content)
+  select v_id, x.category, coalesce(x.content, '')
+  from jsonb_to_recordset(coalesce(p_sections, '[]')) as x(category finding_category, content text)
+  where coalesce(btrim(x.content), '') <> ''
+  on conflict (visit_id, category) do update set content = excluded.content;
 
-  insert into findings (visit_id, category, subcategory, test_name, value_text, value_num, unit,
+  insert into findings (visit_id, category, subcategory, test_code, test_name, value_text, value_num, unit,
                         ref_range, flag, interpretation, sort_order)
-  select v_id, x.category, x.subcategory, x.test_name, x.value_text, x.value_num, x.unit,
+  select v_id, x.category, x.subcategory,
+         (select c.code from test_catalog c where c.code = x.test_code),
+         x.test_name, x.value_text, x.value_num, x.unit,
          x.ref_range, coalesce(x.flag, 'normal'), x.interpretation, coalesce(x.sort_order, 0)
   from jsonb_to_recordset(coalesce(p_findings, '[]')) as
-       x(category finding_category, subcategory text, test_name text, value_text text, value_num numeric,
-         unit text, ref_range text, flag finding_flag, interpretation text, sort_order int)
+       x(category finding_category, subcategory text, test_code text, test_name text, value_text text,
+         value_num numeric, unit text, ref_range text, flag finding_flag, interpretation text, sort_order int)
   where coalesce(x.test_name, '') <> '';
-
-  insert into plan_items (visit_id, problem_id, domain, action, target, timeframe, sort_order)
-  select v_id, x.problem_id, coalesce(x.domain, 'other'), x.action, x.target, x.timeframe, coalesce(x.sort_order, 0)
-  from jsonb_to_recordset(coalesce(p_plan, '[]')) as
-       x(problem_id uuid, domain text, action text, target text, timeframe text, sort_order int)
-  where coalesce(x.action, '') <> '';
 
   return v_id;
 end $$;
 
-grant execute on function public.save_visit(jsonb, jsonb, jsonb, jsonb) to authenticated;
+revoke execute on function public.save_visit(jsonb, jsonb, jsonb) from public, anon;
+grant  execute on function public.save_visit(jsonb, jsonb, jsonb) to authenticated;
 
 -- ---------- Bootstrap first admin -----------------------------------
 -- After you sign up the first account in the app, run:

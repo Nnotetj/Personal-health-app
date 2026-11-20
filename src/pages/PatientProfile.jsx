@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
-import { CATEGORIES, CAT, DOMAINS, FLAGS, PRIORITIES, ageFrom, fmtDate, isAbnormal, prioritySort } from '../lib/constants'
+import { CATEGORIES, FLAGS, ageFrom, fmtDate, isAbnormal } from '../lib/constants'
 import PatientForm from '../components/PatientForm'
 import ShareDialog from '../components/ShareDialog'
 import DeletePatientDialog from '../components/DeletePatientDialog'
@@ -17,8 +17,6 @@ export default function PatientProfile() {
   const [visits, setVisits] = useState([])
   const [allFindings, setAllFindings] = useState([])
   const [sections, setSections] = useState([])
-  const [problems, setProblems] = useState([])
-  const [plan, setPlan] = useState([])
   const [access, setAccess] = useState(null)
   const [visitId, setVisitId] = useState(null)
   const [pertinentOnly, setPertinentOnly] = useState(false)
@@ -41,13 +39,6 @@ export default function PatientProfile() {
   }
   useEffect(() => { load() }, [id])
 
-  useEffect(() => {
-    if (!visitId) { setProblems([]); setPlan([]); return }
-    Promise.all([
-      supabase.from('problems').select('*').eq('visit_id', visitId),
-      supabase.from('plan_items').select('*').eq('visit_id', visitId).order('sort_order'),
-    ]).then(([{ data: pr }, { data: pl }]) => { setProblems((pr || []).sort(prioritySort)); setPlan(pl || []) })
-  }, [visitId])
 
   const visit = visits.find((v) => v.id === visitId)
   const isOwner = patient && (patient.owner_id === profile.id || profile.role === 'admin')
@@ -183,39 +174,11 @@ export default function PatientProfile() {
                   </section>
                 ) : null
               })}
-              {!sections.some((s) => s.visit_id === visitId && s.category === 'problem_list') && (
-              <section className="panel">
-                <h2>ปัญหาเรียงตามความสำคัญ</h2>
-                {problems.length === 0 ? <p className="muted small">ยังไม่มีรายการปัญหา</p> : (
-                  <ol className="problems">
-                    {problems.map((p) => (
-                      <li key={p.id} className={`prio-${p.priority}`}>
-                        <div className="prob-title">
-                          <strong>{p.title}</strong>
-                          <span className={`prio prio-${p.priority}`}>{PRIORITIES[p.priority].label}</span>
-                        </div>
-                        {p.detail && <p className="small">{p.detail}</p>}
-                        {p.category && <span className={`cat-dot cat-${p.category}`}>{CAT[p.category].name}</span>}
-                        <ul className="plan-under">
-                          {plan.filter((x) => x.problem_id === p.id).map((x) => (
-                            <li key={x.id}><span className="domain">{DOMAINS[x.domain].label}</span> {x.action}{x.target && `, เป้า ${x.target}`}{x.timeframe && `, ${x.timeframe}`}</li>
-                          ))}
-                        </ul>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-                {plan.some((x) => !x.problem_id) && (
-                  <>
-                    <h3 className="sub">แผนทั่วไป</h3>
-                    <ul className="plan-under">
-                      {plan.filter((x) => !x.problem_id).map((x) => (
-                        <li key={x.id}><span className="domain">{DOMAINS[x.domain].label}</span> {x.action}{x.timeframe && `, ${x.timeframe}`}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </section>
+              {!sections.some((s) => s.visit_id === visitId && ['problem_list', 'plan_text'].includes(s.category) && s.content?.trim()) && (
+                <section className="panel">
+                  <h2>ปัญหาเรียงตามความสำคัญ</h2>
+                  <p className="muted small">ยังไม่มีรายการปัญหา</p>
+                </section>
               )}
 
               {visit?.doctor_note && (

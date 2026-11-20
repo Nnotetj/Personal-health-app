@@ -7,7 +7,7 @@
 //   plan:        [{ problem: n | 0, items: [{ type, action, target, follow_up }] }],   // n = ลำดับใน problems (เริ่มที่ 1), 0 = ทั่วไป
 //   followup:    [{ when, item, problems: [n...], related_text?: string }]   // related_text = ข้อความที่แพทย์พิมพ์เอง (ถ้ามีจะใช้แทนชื่อจาก problems)
 // }
-import { DOMAINS, planToText, problemsToText } from './constants'
+import { DOMAINS } from './constants'
 
 export const LEVELS = {
   high: { th: 'สูง', en: 'High' },
@@ -191,9 +191,9 @@ export function buildFollowup(problems, plan, lang = 'bi') {
 }
 
 // สร้างจากโปรไฟล์ตรง ๆ (ไม่ใช้ AI): ไทยจะว่าง ต้องกดให้ AI เติมหรือพิมพ์เอง
-export function buildSheetFromData({ problems = [], plan = [], sections = [] }, lang = 'bi') {
-  const listText = sectionText(sections, 'problem_list') || problemsToText(problems)
-  const planText = sectionText(sections, 'plan_text') || planToText(plan, problems)
+export function buildSheetFromData({ sections = [] }, lang = 'bi') {
+  const listText = sectionText(sections, 'problem_list')
+  const planText = sectionText(sections, 'plan_text')
   const clinical = sectionText(sections, 'clinical')
   const line = (re) => (clinical.split('\n').find((l) => re.test(l)) || '').replace(/^-\s*/, '').replace(/^[^:]+:\s*/, '').trim()
   const meds = line(/^-?\s*Current medication/i)
@@ -240,9 +240,9 @@ export function normalizeSheet(s) {
 }
 
 // ข้อมูลที่ส่งให้ AI
-export function sheetProfileForAI({ patient, visit, sections = [], problems = [], plan = [] }, age) {
-  const listText = sectionText(sections, 'problem_list') || problemsToText(problems)
-  const planText = sectionText(sections, 'plan_text') || planToText(plan, problems)
+export function sheetProfileForAI({ patient, visit, sections = [] }, age) {
+  const listText = sectionText(sections, 'problem_list')
+  const planText = sectionText(sections, 'plan_text')
   return {
     sex: patient.sex, age,
     background: patient.background || '',

@@ -50,23 +50,6 @@ export const INTEGRATED = { key: 'integrated', name: 'Integrated Profile', hint:
 export const PROBLEM_LIST = { key: 'problem_list', name: 'ปัญหาเรียงตามความสำคัญ', hint: '1 บรรทัดต่อ 1 ปัญหา เรียงจากสำคัญที่สุด' }
 export const PLAN_TEXT = { key: 'plan_text', name: 'Plan of management', hint: 'จัดกลุ่มตามปัญหาด้านบน' }
 
-// แปลงปัญหา/แผนแบบตารางเดิม (ข้อมูลเก่า) เป็นข้อความ
-export function problemsToText(problems) {
-  return [...problems].sort(prioritySort).map((p, i) =>
-    `${i + 1}. ${p.title}${PRIORITIES[p.priority] ? ` (${PRIORITIES[p.priority].label})` : ''}${p.detail ? ` — ${p.detail}` : ''}`).join('\n')
-}
-export function planToText(plan, problems) {
-  const order = [...problems].sort(prioritySort)
-  const line = (x) => `- ${DOMAINS[x.domain]?.label || 'Other'}: ${x.action}${x.target ? ` | Target: ${x.target}` : ''}${x.timeframe ? ` | ${x.timeframe}` : ''}`
-  const blocks = order.map((p, i) => {
-    const items = plan.filter((x) => x.problem_id === p.id)
-    return items.length ? [`${i + 1}. ${p.title}`, ...items.map(line)].join('\n') : null
-  }).filter(Boolean)
-  const general = plan.filter((x) => !order.some((p) => p.id === x.problem_id))
-  if (general.length) blocks.push(['General', ...general.map(line)].join('\n'))
-  return blocks.join('\n\n')
-}
-
 export const CAT = Object.fromEntries(CATEGORIES.map((c) => [c.key, c]))
 
 export const FLAGS = {
@@ -140,7 +123,7 @@ export const uid = () => crypto.randomUUID()
 
 export const isAbnormal = (f) => f.flag && f.flag !== 'normal'
 
-// Build a deterministic summary (no AI) from structured data
+// Build a deterministic summary (no AI) from the problem_list / plan_text sections
 // รูปแบบ: { intro, themes:[{title, body:[], plan}], goals:[{label, text}], follow_up, closing }
 // อ่านกล่อง Plan ของหมอ: หัวข้อ "1. ชื่อปัญหา" / "General" ตามด้วย "- Domain: action | Target: … | เวลา"
 // (รองรับรูปแบบเก่า "[#1] Domain: …" ด้วย)
@@ -171,45 +154,26 @@ export function parsePlanText(text) {
 const isFollowUp = (d) => /follow|ตรวจติดตาม/i.test(d || '')
 const stripPriority = (s) => String(s || '').replace(/\s*\((High|Medium|Low)\)\s*$/i, '').trim()
 
-// Build a deterministic summary (no AI) from structured data
+// Build a deterministic summary (no AI) from the problem_list / plan_text sections
 // รูปแบบ: { intro, themes:[{title, body:[], plan:[{action, when}]}], goals:[{label, text}], follow_up:[{what, when}], closing }
-export function buildSummaryFromData({ problems, plan, sections = [] }, lang) {
+export function buildSummaryFromData({ sections = [] }, lang) {
   const t = T[lang]
   const listText = sections.find((x) => x.category === 'problem_list')?.content || ''
-  if (!problems.length && listText.trim()) {
-    const lines = listText.split('\n').map((l) => l.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean)
-    const groups = parsePlanText(sections.find((x) => x.category === 'plan_text')?.content)
-    const follow = []
-    const themes = lines.slice(0, 6).map((l, i) => {
-      const [title, ...rest] = l.split(' — ')
-      const items = groups[i + 1] || []
-      follow.push(...items.filter((x) => isFollowUp(x.domain)))
-      return { title: stripPriority(title), body: [rest.join(' — ')], plan: items.filter((x) => !isFollowUp(x.domain)).map(({ action, when }) => ({ action, when })) }
-    })
-    follow.push(...(groups[0] || []))
-    return {
-      intro: '',
-      themes,
-      goals: lines.slice(0, 3).map((l, i) => ({ label: t.goalLabels[i], text: stripPriority(l.split(' — ')[0]) })),
-      follow_up: follow.map((x) => ({ what: x.action, when: x.when })),
-      closing: '',
-    }
-  }
-  const top = [...problems].sort(prioritySort)
-  const item = (p) => ({ action: p.action, when: p.timeframe || '' })
+  const lines = listText.split('\n').map((l) => l.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean)
+  const groups = parsePlanText(sections.find((x) => x.category === 'plan_text')?.content)
+  const follow = []
+  const themes = lines.slice(0, 6).map((l, i) => {
+    const [title, ...rest] = l.split(' — ')
+    const items = groups[i + 1] || []
+    follow.push(...items.filter((x) => isFollowUp(x.domain)))
+    return { title: stripPriority(title), body: [rest.join(' — ')], plan: items.filter((x) => !isFollowUp(x.domain)).map(({ action, when }) => ({ action, when })) }
+  })
+  follow.push(...(groups[0] || []))
   return {
-    intro: top.length
-      ? (lang === 'th'
-        ? `ผลตรวจครั้งนี้มี ${top.length} เรื่องหลักที่ควรดูแล โดยเริ่มจาก “${top[0].title}”`
-        : `Your health check shows ${top.length} main areas to work on, starting with “${top[0].title}”.`)
-      : '',
-    themes: top.slice(0, 6).map((p) => ({
-      title: p.title, body: [p.detail || ''],
-      plan: plan.filter((x) => x.problem_id === p.id && x.domain !== 'follow_up_test').map(item),
-    })),
-    goals: top.slice(0, 3).map((p, i) => ({ label: t.goalLabels[i], text: p.title })),
-    follow_up: plan.filter((x) => x.domain === 'follow_up_test' || !x.problem_id)
-      .map((x) => ({ what: x.action, when: x.timeframe || '' })),
+    intro: '',
+    themes,
+    goals: lines.slice(0, 3).map((l, i) => ({ label: t.goalLabels[i], text: stripPriority(l.split(' — ')[0]) })),
+    follow_up: follow.map((x) => ({ what: x.action, when: x.when })),
     closing: '',
   }
 }
