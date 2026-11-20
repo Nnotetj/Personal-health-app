@@ -21,7 +21,8 @@ src/lib/catalog.js                  จับคู่ชื่อการต�
 
 1. สร้างโปรเจกต์ที่ supabase.com
 2. SQL Editor > วางไฟล์ `supabase/schema.sql` ทั้งไฟล์ > Run
-   แล้วรัน `supabase/migrations/002_test_catalog.sql` ต่อ (รันซ้ำได้ ไม่ทับค่าที่แก้ไว้)
+   แล้วรันไฟล์ใน `supabase/migrations/` ต่อตามลำดับเลข 002 → 008
+   (004 ต้องรันทีละบรรทัดตามที่เขียนในไฟล์, 007 จะข้ามเองถ้าเป็นฐานข้อมูลใหม่)
 3. Authentication > Providers > เปิด Email (แนะนำเปิด Confirm email)
 4. Deploy Edge Function (ต้องมี Supabase CLI)
    ```
@@ -44,6 +45,21 @@ src/lib/catalog.js                  จับคู่ชื่อการต�
 7. Deploy: Vercel หรือ Netlify (มี `vercel.json` และ `public/_redirects` สำหรับ SPA routing แล้ว)
    ใส่ env `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_CLINIC_NAME`
 
+## ข้อมูลอยู่ที่ไหน
+
+| ข้อมูล | ตาราง |
+|---|---|
+| ค่าผลตรวจเป็นตัวเลข/ข้อความรายรายการ | `findings` |
+| ข้อความแต่ละหมวด, Integrated Profile, **รายการปัญหา** (`problem_list`) และ **แผนการรักษา** (`plan_text`) | `visit_sections` (1 แถวต่อ visit ต่อหมวด) |
+| สรุปสำหรับคนไข้ / Personal Health Profile | `patient_summaries` |
+
+ตาราง `problems` และ `plan_items` เดิมถูกย้ายข้อมูลเข้า `visit_sections` แล้วลบออก (migration 007, 008)
+
+### อัปเกรดฐานข้อมูลที่ใช้อยู่แล้ว
+1. Backup ฐานข้อมูล
+2. รัน `007_move_problems_plan_to_sections.sql` ผลท้ายไฟล์ต้องเป็น 0 แถว
+3. รัน `008_drop_legacy_problems_plan.sql` แล้ว deploy หน้าเว็บเวอร์ชันใหม่ทันที
+
 ## สิทธิ์ (RLS)
 
 | บทบาท | เห็น | แก้ไข | แชร์/ลบคนไข้ |
@@ -55,7 +71,7 @@ src/lib/catalog.js                  จับคู่ชื่อการต�
 | บัญชีที่ยังไม่อนุมัติ | | | |
 
 - แพทย์เปลี่ยน role หรือ is_active ของตัวเองไม่ได้ (trigger `guard_profile_update`)
-- ตารางลูก (findings, problems, plan_items, summaries) ดึง patient_id จาก visit อัตโนมัติ ป้องกันการเขียนข้ามคนไข้
+- ตารางลูก (findings, visit_sections, patient_summaries) ดึง patient_id จาก visit อัตโนมัติ ป้องกันการเขียนข้ามคนไข้
 - `save_visit` บันทึก visit และข้อมูลลูกทั้งหมดใน transaction เดียว และรันด้วยสิทธิ์ของแพทย์ที่เรียก
 - `audit_log` เก็บการสร้าง/แก้/ลบ patients, visits, summaries (admin อ่านได้)
 

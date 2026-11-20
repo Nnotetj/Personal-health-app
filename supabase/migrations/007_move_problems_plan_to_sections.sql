@@ -22,7 +22,17 @@ create table if not exists public.visit_sections (
 
 -- ---------- 1. แปลงข้อมูลเก่าเป็นข้อความ -------------------------------
 drop table if exists _legacy_text;
-create temp table _legacy_text as
+create temp table _legacy_text (visit_id uuid, category finding_category, content text);
+
+-- ข้ามได้เลยถ้าไม่มีตารางเก่า (เช่น ติดตั้งใหม่ หรือรัน 008 ไปแล้ว)
+do $mig$
+begin
+  if to_regclass('public.problems') is null or to_regclass('public.plan_items') is null then
+    raise notice 'ไม่พบตาราง problems/plan_items ข้ามการย้ายข้อมูล';
+    return;
+  end if;
+  execute $q$
+insert into _legacy_text (visit_id, category, content)
 with pr as (
   select p.*,
          row_number() over (partition by p.visit_id order by p.priority, p.sort_order, p.id) as n
@@ -69,7 +79,9 @@ plan_text as (
 )
 select visit_id, 'problem_list'::finding_category as category, content from problem_text
 union all
-select visit_id, 'plan_text'::finding_category, content from plan_text;
+select visit_id, 'plan_text'::finding_category, content from plan_text
+  $q$;
+end $mig$;
 
 -- ---------- 2. เติมลง visit_sections (เฉพาะช่องที่ยังว่าง) ---------------
 update public.visit_sections s
@@ -87,14 +99,24 @@ select l.visit_id, v.patient_id, l.category, l.content, now()
 
 -- ---------- 3. ตรวจผล ----------------------------------------------------
 -- ต้องได้ 0 แถว: visit ที่มีข้อมูลในตารางเก่า แต่ visit_sections ยังว่าง
-select v.id as visit_id, v.visit_date, 'problem_list' as missing
-  from public.visits v
- where exists (select 1 from public.problems p where p.visit_id = v.id)
-   and not exists (select 1 from public.visit_sections s
-                    where s.visit_id = v.id and s.category = 'problem_list' and trim(s.content) <> '')
-union all
-select v.id, v.visit_date, 'plan_text'
-  from public.visits v
- where exists (select 1 from public.plan_items x where x.visit_id = v.id)
-   and not exists (select 1 from public.visit_sections s
-                    where s.visit_id = v.id and s.category = 'plan_text' and trim(s.content) <> '');
+drop table if exists _missing;
+create temp table _missing (visit_id uuid, visit_date date, missing text);
+do $chk$
+begin
+  if to_regclass('public.problems') is null or to_regclass('public.plan_items') is null then return; end if;
+  execute $q$
+    insert into _missing
+    select v.id, v.visit_date, 'problem_list'
+      from public.visits v
+     where exists (select 1 from public.problems p where p.visit_id = v.id)
+       and not exists (select 1 from public.visit_sections s
+                        where s.visit_id = v.id and s.category = 'problem_list' and btrim(s.content) <> '')
+    union all
+    select v.id, v.visit_date, 'plan_text'
+      from public.visits v
+     where exists (select 1 from public.plan_items x where x.visit_id = v.id)
+       and not exists (select 1 from public.visit_sections s
+                        where s.visit_id = v.id and s.category = 'plan_text' and btrim(s.content) <> '')
+  $q$;
+end $chk$;
+select * from _missing;
