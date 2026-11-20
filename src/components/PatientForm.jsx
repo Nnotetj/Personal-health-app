@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import Modal from './Modal'
 
 export default function PatientForm({ patient, onClose, onSaved }) {
-  const [f, setF] = useState(patient || { first_name: '', last_name: '', hn: '', sex: '', dob: '', phone: '', email: '', background: '', doc_lang: 'bi' })
+  const [f, setF] = useState(patient || { first_name: '', last_name: '', hn: '', sex: '', dob: '', background: '', doc_lang: 'bi' })
   const [err, setErr] = useState(null)
   const [busy, setBusy] = useState(false)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
@@ -13,7 +13,7 @@ export default function PatientForm({ patient, onClose, onSaved }) {
     setBusy(true); setErr(null)
     const payload = {
       first_name: f.first_name, last_name: f.last_name, hn: f.hn || null, sex: f.sex || null,
-      dob: f.dob || null, phone: f.phone || null, email: f.email || null, background: f.background || null,
+      dob: f.dob || null, background: f.background || null,
     }
     // ส่งเฉพาะเมื่อเปลี่ยนจากค่าเริ่มต้น (กันพังถ้ายังไม่ได้รัน migration 006)
     if ((f.doc_lang && f.doc_lang !== 'bi') || patient?.doc_lang) payload.doc_lang = f.doc_lang || 'bi'
@@ -38,13 +38,11 @@ export default function PatientForm({ patient, onClose, onSaved }) {
           </select>
         </label>
         <label>วันเกิด<input type="date" value={f.dob || ''} onChange={set('dob')} /></label>
-        <label>โทรศัพท์<input value={f.phone || ''} onChange={set('phone')} /></label>
         <label>ภาษาของเอกสารสรุป
           <select value={f.doc_lang || 'bi'} onChange={set('doc_lang')}>
             <option value="bi">ไทย + English</option><option value="th">ไทย</option><option value="en">English (คนไข้ต่างชาติ)</option>
           </select>
         </label>
-        <label className="span-2">อีเมล<input type="email" value={f.email || ''} onChange={set('email')} /></label>
         <label className="span-2">ประวัติพื้นฐาน (โรคประจำตัว ยา แพ้ยา ประวัติครอบครัว ไลฟ์สไตล์)
           <textarea rows={4} value={f.background || ''} onChange={set('background')} />
         </label>
