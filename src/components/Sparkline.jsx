@@ -1,6 +1,7 @@
 import { fmtDate } from '../lib/constants'
+import { distanceFromRange, parseRefRange } from '../lib/catalog'
 
-export default function Sparkline({ points, current, w = 84, h = 26 }) {
+export default function Sparkline({ points, current, refRange, w = 84, h = 26 }) {
   const vals = points.map((p) => p.value)
   const min = Math.min(...vals)
   const max = Math.max(...vals)
@@ -12,6 +13,11 @@ export default function Sparkline({ points, current, w = 84, h = 26 }) {
   const idx = points.findIndex((p) => p.visit_id === current)
   const prev = idx > 0 ? points[idx - 1] : null
   const delta = prev ? points[idx].value - prev.value : null
+  // เขียว = เข้าใกล้ค่าปกติ, แดง = ห่างออก, เทา = ไม่ต่าง หรือไม่รู้ช่วงปกติ
+  const range = parseRefRange(refRange)
+  const dPrev = prev ? distanceFromRange(prev.value, range) : null
+  const dNow = prev ? distanceFromRange(points[idx].value, range) : null
+  const trend = dPrev == null || dNow == null || dNow === dPrev ? '' : dNow < dPrev ? 'better' : 'worse'
   const title = points.map((p) => `${fmtDate(p.date)}: ${p.value}`).join('\n')
 
   return (
@@ -23,10 +29,11 @@ export default function Sparkline({ points, current, w = 84, h = 26 }) {
             fill={points[i].visit_id === current ? 'var(--ink)' : 'currentColor'} />
         ))}
       </svg>
-      {delta != null && <span className="delta" aria-hidden="true">{delta > 0 ? '+' : ''}{+delta.toFixed(2)}</span>}
+      {delta != null && <span className={`delta ${trend}`} aria-hidden="true">{delta > 0 ? '+' : ''}{+delta.toFixed(2)}</span>}
       <span className="sr-only">
         แนวโน้ม {points.map((p) => `${fmtDate(p.date)} ${p.value}`).join(', ')}
         {delta != null && `, เปลี่ยนจากครั้งก่อน ${delta > 0 ? '+' : ''}${+delta.toFixed(2)}`}
+        {trend && (trend === 'better' ? ' (เข้าใกล้ค่าปกติ)' : ' (ห่างจากค่าปกติ)')}
       </span>
     </span>
   )

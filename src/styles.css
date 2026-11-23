@@ -189,8 +189,11 @@ table.findings tr.abn td:first-child strong { color: var(--bad); }
 .flag-low, .flag-high, .flag-abnormal { background: var(--bad-bg); color: var(--bad); }
 .flag-critical { background: var(--bad); color: #fff; }
 
-.spark { display: inline-flex; align-items: center; gap: .35rem; color: var(--cat); }
-.delta { font-size: .75rem; color: var(--ink-2); }
+.spark { display: inline-flex; align-items: center; gap: .35rem; color: var(--cat); white-space: nowrap; }
+.spark svg { flex-shrink: 0; }
+.delta { font-size: .75rem; color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.delta.better { color: var(--ok); font-weight: 600; }
+.delta.worse { color: var(--bad); font-weight: 600; }
 
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 1rem 1.1rem; }
 .panel > h2 { margin-bottom: .75rem; display: flex; align-items: center; gap: .5rem; }
