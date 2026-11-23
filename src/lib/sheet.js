@@ -176,14 +176,47 @@ export function groupFollowup(rows) {
 }
 
 const TEST_TYPES = ['ตรวจติดตาม', 'ส่งต่อ', 'Follow-up test', 'Referral']
+
+// ตัดคำบอกช่วงเวลาออกจากชื่อรายการ เพราะมีคอลัมน์ช่วงเวลาแยกอยู่แล้ว
+// "Recheck lipids in 6-8 weeks" -> "Recheck lipids", "3-6 months" -> ""
+const NUM = String.raw`\d+(?:\.\d+)?(?:\s*(?:-|–|—|to|ถึง)\s*\d+(?:\.\d+)?)?`
+const UNIT = String.raw`(?:days?|weeks?|wks?|months?|mos?|years?|yrs?|วัน|สัปดาห์|อาทิตย์|เดือน|ปี)`
+const TIME_RE = new RegExp(
+  String.raw`(?:\b(?:in|within|after|at|by|every|for|over)\s+|ภายใน\s*|ใน\s*|อีก\s*|ทุก\s*|หลัง\s*)?(?:about\s+|~\s*)?${NUM}\s*${UNIT}(?![A-Za-z])\.?`
+  + String.raw`|\b(?:annually|yearly|monthly|weekly|every year)\b|ทุกปี|ทุกเดือน`,
+  'gi',
+)
+export function stripTime(text) {
+  return String(text || '')
+    .replace(TIME_RE, ' ')
+    .replace(/\(\s*\)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s,;:–—-]+|[\s,;:–—-]+$/g, '')
+    .replace(/\s+(?:and|or|then|และ|หรือ)$/i, '')
+    .trim()
+}
+
 export function buildFollowup(problems, plan, lang = 'bi') {
   const rows = []
+  const seen = new Map()
   for (const g of plan) {
     for (const it of g.items) {
       if (isOngoing(it.follow_up)) continue
       // ตรวจ/ส่งต่อ: ใช้ชื่อการตรวจ  ส่วนยา/วิถีชีวิต: ใช้ข้อความ "ตรวจซ้ำ…" ที่ระบุไว้ในช่องติดตามผล
-      const item = TEST_TYPES.includes(it.type) ? it.action : it.follow_up
-      rows.push({ when: bucketFor(it.follow_up, lang), item, problems: g.problem ? [g.problem] : [] })
+      // ถ้าช่องติดตามผลมีแค่ช่วงเวลา (เช่น "3-6 months") แปลว่าไม่ใช่การนัดตรวจ ไม่ต้องลงตารางนัด
+      const item = stripTime(TEST_TYPES.includes(it.type) ? it.action : it.follow_up)
+      if (!item) continue
+      const when = bucketFor(it.follow_up, lang)
+      const key = `${when}|${item}`.toLowerCase()
+      // การตรวจเดียวกันในช่วงเวลาเดียวกัน: รวมเป็นแถวเดียว แล้วรวมปัญหาที่เกี่ยวข้อง
+      const dup = seen.get(key)
+      if (dup) {
+        if (g.problem && !dup.problems.includes(g.problem)) dup.problems.push(g.problem)
+        continue
+      }
+      const row = { when, item, problems: g.problem ? [g.problem] : [] }
+      seen.set(key, row)
+      rows.push(row)
     }
   }
   rows.sort((a, b) => periodDays(a.when) - periodDays(b.when))
