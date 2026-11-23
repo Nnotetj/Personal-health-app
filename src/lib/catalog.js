@@ -85,3 +85,24 @@ export function normalizeFinding(catalog, f, sex) {
 
 // Trend key: catalog code when known, otherwise normalised name
 export const trendKey = (f) => f.test_code || `n:${keyOf(f.test_name)}`
+
+// อ่านช่วงค่าปกติจากข้อความที่แสดงในตาราง เช่น "70-99 mg/dL", "<5.7%", ">40", "≤130"
+export function parseRefRange(text) {
+  const t = String(text || '').replace(/,/g, '').replace(/[–—]/g, '-')
+  const num = '(\\d+(?:\\.\\d+)?)'
+  let m = t.match(new RegExp(`${num}\\s*-\\s*${num}`))
+  if (m) return { low: Number(m[1]), high: Number(m[2]) }
+  m = t.match(new RegExp(`[<≤]\\s*=?\\s*${num}`))
+  if (m) return { low: null, high: Number(m[1]) }
+  m = t.match(new RegExp(`[>≥]\\s*=?\\s*${num}`))
+  if (m) return { low: Number(m[1]), high: null }
+  return null
+}
+
+// ระยะห่างจากช่วงปกติ (0 = อยู่ในช่วงปกติ)
+export function distanceFromRange(v, r) {
+  if (!r) return null
+  if (r.high != null && v > r.high) return v - r.high
+  if (r.low != null && v < r.low) return r.low - v
+  return 0
+}

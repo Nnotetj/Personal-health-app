@@ -141,7 +141,7 @@ export default function PatientProfile() {
                                   <td className="num">{f.value_text || f.value_num}{f.unit && <span className="unit"> {f.unit}</span>}</td>
                                   <td className="muted num">{f.ref_range}</td>
                                   <td><span className={`flag flag-${f.flag}`}>{FLAGS[f.flag]}</span></td>
-                                  <td>{series.length > 1 ? <Sparkline points={series} current={visitId} /> : <span className="muted small">ครั้งแรก</span>}</td>
+                                  <td>{series.length > 1 ? <Sparkline points={series} current={visitId} refRange={f.ref_range} /> : <span className="muted small">ครั้งแรก</span>}</td>
                                   <td className="interp">{f.interpretation}</td>
                                 </tr>
                               )
