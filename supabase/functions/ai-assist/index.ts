@@ -14,7 +14,7 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MODEL = "claude-sonnet-5";
+const MODEL = "claude-haiku-5-5";
 const MAX_TOKENS = 8000;
 const DEADLINE_MS = 140_000;  // Supabase ตัดที่ ~150 วินาที เผื่อไว้ 10 วินาที
 
