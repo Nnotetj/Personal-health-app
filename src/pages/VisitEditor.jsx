@@ -97,10 +97,14 @@ export default function VisitEditor() {
       })
       const newValues = (out.key_values || []).map((v) =>
         normalizeFinding(catalog, { ...emptyValue(okCategory(v.category)), ...v, category: okCategory(v.category), flag: okFlag(v.flag), _manual: false, value_num: v.value_num ?? '', _k: uid() }, sex))
-      setSections({ ...emptySections(), ...(out.sections || {}) })
+      const sec = out.sections && typeof out.sections === 'object' ? out.sections : {}
+      setSections({ ...emptySections(), ...sec })
       setValues(newValues)
       setAiDraft(out); setDirty(true)
       if (newValues.length) setShowValues(true)
+      if (!CATEGORIES.some((c) => String(sec[c.key] || '').trim())) {
+        setErr('AI ดึงค่าผลตรวจได้ แต่ยังไม่ได้แยกข้อความตามหมวด กด "AI ร่าง" อีกครั้ง')
+      }
     } catch (e) {
       setErr(`AI ร่างไม่สำเร็จ: ${e.message}`)
     } finally { setBusy(null) }

@@ -538,8 +538,44 @@ Deno.serve(async (req) => {
         }
         return out;
       };
+      // บางครั้ง AI ส่งส่วนที่ซ้อนกันกลับมาเป็นข้อความ JSON (เช่น "sections": "{...}")
+      // แทนที่จะเป็น object/array ทำให้หน้าเว็บหาข้อความแต่ละหมวดไม่เจอ แปลงกลับให้ถูกรูปแบบ
+      const parseMaybe = (v: unknown) => {
+        if (typeof v !== "string") return v;
+        const t = v.trim();
+        if (!t.startsWith("{") && !t.startsWith("[")) return v;
+        try { return JSON.parse(t); } catch { return v; }
+      };
+      const fixShape = (out: any) => {
+        out = parseMaybe(out) ?? {};
+        out.key_values = parseMaybe(out.key_values);
+        if (!Array.isArray(out.key_values)) out.key_values = [];
+        let sec: any = parseMaybe(out.sections);
+        if (!sec || typeof sec !== "object" || Array.isArray(sec)) sec = {};
+        for (const k of [...CATEGORIES, "problem_list", "plan_groups"]) {
+          const v = parseMaybe(sec[k]);
+          sec[k] = Array.isArray(v) ? v : typeof v === "string" && v.trim() ? [v] : [];
+        }
+        if (typeof sec.integrated !== "string") sec.integrated = "";
+        out.sections = sec;
+        return out;
+      };
+      const noSections = (out: any) => CATEGORIES.every((k) => !out.sections[k].length);
+      const extractOnce = async () => {
+        const out = fixShape(await callClaude(EXTRACT_SYSTEM, prompt, EXTRACT_SCHEMA, deadline));
+        if (!noSections(out)) return out;
+        // ได้ค่าผลตรวจแต่ไม่มีข้อความแยกหมวดเลย: ถามใหม่อีกครั้ง
+        console.warn("Extract returned no section text; retrying once", JSON.stringify(out).slice(0, 300));
+        try {
+          const again = fixShape(await callClaude(EXTRACT_SYSTEM, prompt, EXTRACT_SCHEMA, deadline));
+          return noSections(again) ? out : again;
+        } catch (e) {
+          if ((e as any).truncated) throw e;
+          return out; // หมดเวลา: ส่งผลรอบแรกกลับไป ให้หน้าเว็บแจ้งให้กดใหม่
+        }
+      };
       try {
-        return json(linesToText(await callClaude(EXTRACT_SYSTEM, prompt, EXTRACT_SCHEMA, deadline)));
+        return json(linesToText(await extractOnce()));
       } catch (e) {
         if (!(e as any).truncated) throw e;
         // ยาวเกินไป: แบ่งเรียกสองรอบแล้วรวมผล
@@ -555,9 +591,10 @@ Deno.serve(async (req) => {
           callClaude(only("clinical, functional, biomarker", 'Return "key_values" as usual.'), prompt, EXTRACT_SCHEMA, deadline),
           callClaude(only("imaging, multiomic, integrated, problem_list, plan_groups", "Return key_values as usual. integrated, problem_list and plan_groups cover the WHOLE check-up."), prompt, EXTRACT_SCHEMA, deadline),
         ]);
+        const [fa, fb] = [fixShape(a), fixShape(b)];
         return json(linesToText({
-          sections: merge(a.sections, b.sections),
-          key_values: [...(a.key_values ?? []), ...(b.key_values ?? [])].slice(0, 16),
+          sections: merge(fa.sections, fb.sections),
+          key_values: [...fa.key_values, ...fb.key_values].slice(0, 16),
         }));
       }
     }
